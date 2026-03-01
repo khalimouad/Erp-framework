@@ -5,7 +5,7 @@ import logging
 
 from app.config import settings
 from app.database import create_all_tables
-from app.core.module_loader import load_modules
+from app.core.module_loader import load_modules, get_active_modules
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -63,4 +63,10 @@ load_modules(app)
 
 @app.get("/", tags=["Health"])
 async def health():
-    return {"status": "ok", "app": settings.APP_NAME, "version": settings.APP_VERSION}
+    return {
+        "status": "ok",
+        "app": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "vertical": settings.VERTICAL,
+        "modules": get_active_modules(settings.VERTICAL),
+    }

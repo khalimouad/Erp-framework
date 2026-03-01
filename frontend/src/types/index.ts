@@ -1,3 +1,5 @@
+export type Vertical = 'general' | 'trading' | 'medical' | 'manufacturing'
+
 export interface User {
   id: number
   email: string
@@ -50,6 +52,25 @@ export interface Product {
   created_at: string
 }
 
+export interface SaleOrder {
+  id: number
+  reference: string
+  customer_name: string
+  customer_email: string | null
+  status: 'draft' | 'confirmed' | 'shipped' | 'invoiced' | 'cancelled'
+  total_amount: number
+  created_at: string
+}
+
+export interface PurchaseOrder {
+  id: number
+  reference: string
+  vendor_name: string
+  status: 'draft' | 'sent' | 'received' | 'cancelled'
+  total_amount: number
+  created_at: string
+}
+
 export interface Employee {
   id: number
   first_name: string
@@ -62,6 +83,86 @@ export interface Employee {
   hire_date: string | null
   salary: number
   is_active: boolean
+  created_at: string
+}
+
+// Medical
+export interface Patient {
+  id: number
+  patient_code: string
+  first_name: string
+  last_name: string
+  date_of_birth: string | null
+  gender: 'male' | 'female' | 'other' | null
+  blood_type: string | null
+  phone: string | null
+  email: string | null
+  allergies: string | null
+  chronic_conditions: string | null
+  insurance_provider: string | null
+  is_active: boolean
+  created_at: string
+}
+
+export interface Appointment {
+  id: number
+  patient_id: number
+  doctor_id: number | null
+  appointment_date: string
+  duration_minutes: number
+  appointment_type: string | null
+  status: 'scheduled' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show'
+  notes: string | null
+  created_at: string
+}
+
+export interface PharmacyItem {
+  id: number
+  drug_name: string
+  generic_name: string | null
+  dosage_form: string | null
+  strength: string | null
+  quantity_on_hand: number
+  reorder_level: number
+  unit_price: number
+  expiry_date: string | null
+  is_active: boolean
+  created_at: string
+}
+
+// Manufacturing
+export interface WorkOrder {
+  id: number
+  reference: string
+  bom_id: number
+  quantity_planned: number
+  quantity_produced: number
+  status: 'draft' | 'confirmed' | 'in_progress' | 'done' | 'cancelled'
+  scheduled_start: string | null
+  scheduled_end: string | null
+  created_at: string
+}
+
+export interface BOM {
+  id: number
+  product_id: number
+  reference: string | null
+  quantity: number
+  is_active: boolean
+  created_at: string
+}
+
+// Accounting
+export interface Invoice {
+  id: number
+  reference: string
+  invoice_type: 'customer' | 'vendor'
+  partner_name: string
+  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled'
+  total_amount: number
+  amount_paid: number
+  issue_date: string
+  due_date: string | null
   created_at: string
 }
 

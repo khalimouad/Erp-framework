@@ -26,6 +26,11 @@ api.interceptors.response.use(
   },
 )
 
+// --- Health / Vertical info ---
+export const healthApi = {
+  info: () => axios.get('/'),  // hits root, no auth needed
+}
+
 // --- Auth ---
 export const authApi = {
   login: (email: string, password: string) => {
@@ -58,11 +63,65 @@ export const inventoryApi = {
     api.get(`/inventory/stock-level?product_id=${productId}&warehouse_id=${warehouseId}`),
 }
 
+// --- Sales ---
+export const salesApi = {
+  listOrders: (skip = 0, limit = 50) => api.get(`/sales/orders?skip=${skip}&limit=${limit}`),
+  getOrder: (id: number) => api.get(`/sales/orders/${id}`),
+  createOrder: (data: object) => api.post('/sales/orders', data),
+  updateOrder: (id: number, data: object) => api.patch(`/sales/orders/${id}`, data),
+}
+
+// --- Purchasing ---
+export const purchasingApi = {
+  listOrders: (skip = 0, limit = 50) => api.get(`/purchasing/orders?skip=${skip}&limit=${limit}`),
+  createOrder: (data: object) => api.post('/purchasing/orders', data),
+  updateOrder: (id: number, data: object) => api.patch(`/purchasing/orders/${id}`, data),
+}
+
 // --- HR ---
 export const hrApi = {
   listEmployees: (skip = 0, limit = 50) => api.get(`/hr/employees?skip=${skip}&limit=${limit}`),
   createEmployee: (data: object) => api.post('/hr/employees', data),
   updateEmployee: (id: number, data: object) => api.patch(`/hr/employees/${id}`, data),
+}
+
+// --- Medical ---
+export const medicalApi = {
+  listPatients: (skip = 0, limit = 50) => api.get(`/medical/patients?skip=${skip}&limit=${limit}`),
+  createPatient: (data: object) => api.post('/medical/patients', data),
+  updatePatient: (id: number, data: object) => api.patch(`/medical/patients/${id}`, data),
+  listAppointments: (skip = 0, limit = 50) => api.get(`/medical/appointments?skip=${skip}&limit=${limit}`),
+  createAppointment: (data: object) => api.post('/medical/appointments', data),
+  updateAppointment: (id: number, data: object) => api.patch(`/medical/appointments/${id}`, data),
+  listPharmacy: () => api.get('/medical/pharmacy'),
+  createPharmacyItem: (data: object) => api.post('/medical/pharmacy', data),
+  lowStock: () => api.get('/medical/pharmacy/low-stock'),
+  createPrescription: (data: object) => api.post('/medical/prescriptions', data),
+  createRecord: (data: object) => api.post('/medical/records', data),
+}
+
+// --- Manufacturing ---
+export const manufacturingApi = {
+  listBoms: () => api.get('/manufacturing/bom'),
+  createBom: (data: object) => api.post('/manufacturing/bom', data),
+  listWorkOrders: (skip = 0, limit = 50) => api.get(`/manufacturing/work-orders?skip=${skip}&limit=${limit}`),
+  createWorkOrder: (data: object) => api.post('/manufacturing/work-orders', data),
+  updateWorkOrder: (id: number, data: object) => api.patch(`/manufacturing/work-orders/${id}`, data),
+}
+
+// --- Quality ---
+export const qualityApi = {
+  listQcs: () => api.get('/quality/'),
+  createQc: (data: object) => api.post('/quality/', data),
+  updateQc: (id: number, data: object) => api.patch(`/quality/${id}`, data),
+}
+
+// --- Accounting ---
+export const accountingApi = {
+  listInvoices: (skip = 0, limit = 50) => api.get(`/accounting/invoices?skip=${skip}&limit=${limit}`),
+  createInvoice: (data: object) => api.post('/accounting/invoices', data),
+  updateInvoice: (id: number, data: object) => api.patch(`/accounting/invoices/${id}`, data),
+  addPayment: (invoiceId: number, data: object) => api.post(`/accounting/invoices/${invoiceId}/payments`, data),
 }
 
 // --- Companies ---
