@@ -15,6 +15,15 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     logger.info("Starting NextERP — creating tables...")
     await create_all_tables()
+
+    # Bootstrap the base module: scan manifests, seed config & sequences
+    from app.database import AsyncSessionLocal
+    from app.modules.base import service as base_svc
+    from app.core.module_loader import get_active_modules
+    async with AsyncSessionLocal() as db:
+        await base_svc.bootstrap(db)
+        await base_svc.sync_states(db, get_active_modules(settings.VERTICAL))
+
     await seed_superadmin()
     yield
     logger.info("NextERP shutting down")

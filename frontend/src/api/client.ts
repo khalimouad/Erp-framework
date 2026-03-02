@@ -129,3 +129,18 @@ export const companiesApi = {
   list: () => api.get('/companies/'),
   create: (data: object) => api.post('/companies/', data),
 }
+
+// --- Base (module registry + system config) ---
+export const baseApi = {
+  // Modules
+  listModules: () => api.get('/base/modules'),
+  installModule: (name: string) => api.post(`/base/modules/${name}/install`),
+  uninstallModule: (name: string) => api.post(`/base/modules/${name}/uninstall`),
+  // Config
+  listConfig: (group?: string) =>
+    api.get('/base/config' + (group ? `?group=${group}` : '')),
+  setConfig: (key: string, value: string) =>
+    api.put(`/base/config/${key}`, { value }),
+  // Sequences
+  listSequences: () => api.get('/base/sequences'),
+}

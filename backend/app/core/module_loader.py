@@ -9,7 +9,7 @@ Verticals define which module bundles are activated:
 
 To create a new module:
   1. Create app/modules/<name>/
-  2. Add __init__.py, models.py, schemas.py, router.py, service.py
+  2. Add __init__.py, manifest.py, models.py, schemas.py, router.py, service.py
   3. Register it in VERTICAL_MODULES below
 """
 
@@ -20,8 +20,9 @@ from app.config import Vertical
 
 logger = logging.getLogger(__name__)
 
-# Core modules always loaded regardless of vertical
-CORE_MODULES = ["users", "companies"]
+# Core modules always loaded regardless of vertical.
+# 'base' must be first — it bootstraps the module registry, config, and sequences.
+CORE_MODULES = ["base", "users", "companies"]
 
 # Per-vertical module bundles (appended to CORE_MODULES)
 VERTICAL_MODULES: dict[str, list[str]] = {
