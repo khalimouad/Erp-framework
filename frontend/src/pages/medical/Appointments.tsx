@@ -1,101 +1,134 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
-import Header from '@/components/Layout/Header'
-import DataTable from '@/components/common/DataTable'
-import { medicalApi } from '@/api/client'
+import { PageTemplate }   from '@/components/layout/PageTemplate'
+import { AdvancedTable }  from '@/components/table/AdvancedTable'
+import { Modal }          from '@/components/ui/Modal'
+import { Button }         from '@/components/ui/Button'
+import { Badge }          from '@/components/ui/Badge'
+import { FormView }       from '@/components/form/FormView'
+import { medicalApi }     from '@/api/client'
 import type { Appointment } from '@/types'
+import type { ColumnDef, RowAction, FormFieldDef } from '@/types/ui'
 
-const STATUS_COLORS: Record<string, string> = {
-  scheduled: 'bg-blue-100 text-blue-700',
-  confirmed: 'bg-indigo-100 text-indigo-700',
-  in_progress: 'bg-yellow-100 text-yellow-700',
-  completed: 'bg-green-100 text-green-700',
-  cancelled: 'bg-red-100 text-red-700',
-  no_show: 'bg-gray-100 text-gray-600',
+const STATUS_COLOR: Record<string, string> = {
+  scheduled: 'blue', confirmed: 'indigo', in_progress: 'yellow',
+  completed: 'green', cancelled: 'red', no_show: 'gray',
 }
+
+const COLUMNS: ColumnDef<Appointment>[] = [
+  { key: 'id',               label: '#' },
+  { key: 'patient_id',       label: 'Patient ID' },
+  { key: 'appointment_type', label: 'Type', searchable: true },
+  { key: 'appointment_date', label: 'Date & Time', type: 'datetime' },
+  {
+    key: 'duration_minutes',
+    label: 'Duration',
+    render: (row: Appointment) => `${row.duration_minutes} min`,
+  },
+  {
+    key: 'status',
+    label: 'Status',
+    render: (row: Appointment) => (
+      <Badge color={STATUS_COLOR[row.status] ?? 'gray'}>
+        {row.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+      </Badge>
+    ),
+  },
+]
+
+const FIELDS: FormFieldDef[] = [
+  { key: 'patient_id',       label: 'Patient ID',       type: 'number',   required: true },
+  { key: 'appointment_date', label: 'Date & Time',      type: 'datetime', required: true },
+  {
+    key: 'appointment_type',
+    label: 'Appointment Type',
+    type: 'select',
+    options: [
+      { value: 'consultation', label: 'Consultation' },
+      { value: 'follow-up',    label: 'Follow-up' },
+      { value: 'emergency',    label: 'Emergency' },
+      { value: 'checkup',      label: 'Checkup' },
+      { value: 'procedure',    label: 'Procedure' },
+    ],
+  },
+  { key: 'duration_minutes', label: 'Duration (min)', type: 'number' },
+  { key: 'notes',            label: 'Notes',          type: 'textarea', span: 2 },
+]
 
 export default function Appointments() {
   const qc = useQueryClient()
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({
-    patient_id: '',
-    appointment_date: '',
-    duration_minutes: 30,
-    appointment_type: '',
-    notes: '',
-  })
+  const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState<Appointment | null>(null)
+  const [formData, setFormData] = useState<Record<string, unknown>>({})
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading } = useQuery<Appointment[]>({
     queryKey: ['appointments'],
-    queryFn: () => medicalApi.listAppointments(),
+    queryFn: () => medicalApi.listAppointments().then(r => r.data),
   })
 
-  const createMutation = useMutation({
-    mutationFn: () => medicalApi.createAppointment({ ...form, patient_id: Number(form.patient_id) }),
+  const saveMutation = useMutation({
+    mutationFn: (d: Record<string, unknown>) =>
+      editing ? medicalApi.updateAppointment(editing.id, d) : medicalApi.createAppointment(d),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['appointments'] })
-      setShowForm(false)
+      setOpen(false)
+      setEditing(null)
     },
   })
 
-  const columns = [
-    { key: 'id', label: '#' },
-    { key: 'patient_id', label: 'Patient ID' },
-    { key: 'appointment_type', label: 'Type' },
+  const rowActions: RowAction<Appointment>[] = [
     {
-      key: 'appointment_date', label: 'Date & Time',
-      render: (row: Appointment) => new Date(row.appointment_date).toLocaleString(),
-    },
-    { key: 'duration_minutes', label: 'Duration', render: (row: Appointment) => `${row.duration_minutes} min` },
-    {
-      key: 'status', label: 'Status',
-      render: (row: Appointment) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[row.status]}`}>{row.status.replace('_', ' ')}</span>
-      ),
+      key: 'edit',
+      label: 'Edit',
+      onClick: (r) => { setEditing(r); setFormData({ ...r }); setOpen(true) },
     },
   ]
 
   return (
-    <div>
-      <Header title="Medical — Appointments" />
-      <div className="p-6 space-y-4">
-        <div className="flex justify-between items-center">
-          <p className="text-gray-500 text-sm">{data?.data?.length ?? 0} appointments</p>
-          <button className="btn-primary" onClick={() => setShowForm(true)}><Plus size={16} /> New Appointment</button>
-        </div>
-
-        {showForm && (
-          <div className="card p-6 space-y-4">
-            <h3 className="font-semibold">New Appointment</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="label">Patient ID *</label><input className="input" type="number" value={form.patient_id} onChange={e => setForm({ ...form, patient_id: e.target.value })} /></div>
-              <div><label className="label">Date & Time *</label><input className="input" type="datetime-local" value={form.appointment_date} onChange={e => setForm({ ...form, appointment_date: e.target.value })} /></div>
-              <div>
-                <label className="label">Appointment Type</label>
-                <select className="input" value={form.appointment_type} onChange={e => setForm({ ...form, appointment_type: e.target.value })}>
-                  <option value="">Select...</option>
-                  <option value="consultation">Consultation</option>
-                  <option value="follow-up">Follow-up</option>
-                  <option value="emergency">Emergency</option>
-                  <option value="checkup">Checkup</option>
-                  <option value="procedure">Procedure</option>
-                </select>
-              </div>
-              <div><label className="label">Duration (min)</label><input className="input" type="number" value={form.duration_minutes} onChange={e => setForm({ ...form, duration_minutes: Number(e.target.value) })} /></div>
-              <div className="col-span-2"><label className="label">Notes</label><textarea className="input" rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
-            </div>
-            <div className="flex gap-2">
-              <button className="btn-primary" onClick={() => createMutation.mutate()} disabled={!form.patient_id || !form.appointment_date}>Save</button>
-              <button className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
-            </div>
-          </div>
-        )}
-
-        <div className="card">
-          <DataTable<Appointment> columns={columns} data={data?.data ?? []} loading={isLoading} />
-        </div>
+    <PageTemplate
+      title="Appointments"
+      breadcrumbs={[{ label: 'Medical' }, { label: 'Appointments' }]}
+      actions={[{
+        key: 'new',
+        label: 'New Appointment',
+        icon: <Plus size={14} />,
+        variant: 'primary',
+        onClick: () => { setEditing(null); setFormData({}); setOpen(true) },
+      }]}
+      loading={isLoading}
+    >
+      <div className="p-6">
+        <AdvancedTable<Appointment>
+          columns={COLUMNS}
+          data={data ?? []}
+          rowKey="id"
+          rowActions={rowActions}
+          searchPlaceholder="Search appointments..."
+          emptyText="No appointments found"
+        />
       </div>
-    </div>
+
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={editing ? `Edit — Appointment #${editing.id}` : 'New Appointment'}
+        size="md"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button
+              variant="primary"
+              loading={saveMutation.isPending}
+              onClick={() => saveMutation.mutate(formData)}
+            >
+              Save
+            </Button>
+          </div>
+        }
+      >
+        <FormView fields={FIELDS} data={formData} onChange={setFormData} readOnly={false} />
+      </Modal>
+    </PageTemplate>
   )
 }

@@ -1,52 +1,175 @@
-import { useQuery } from '@tanstack/react-query'
-import Header from '@/components/Layout/Header'
-import DataTable from '@/components/common/DataTable'
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Plus } from 'lucide-react'
+import { PageTemplate }  from '@/components/layout/PageTemplate'
+import { AdvancedTable } from '@/components/table/AdvancedTable'
+import { Modal }         from '@/components/ui/Modal'
+import { Button }        from '@/components/ui/Button'
+import { Badge }         from '@/components/ui/Badge'
+import { FormView }      from '@/components/form/FormView'
 import { accountingApi } from '@/api/client'
-import type { Invoice } from '@/types'
+import type { Invoice }  from '@/types'
+import type { ColumnDef, RowAction, FormFieldDef } from '@/types/ui'
 
-const STATUS_COLORS: Record<string, string> = {
-  draft: 'bg-gray-100 text-gray-600',
-  sent: 'bg-blue-100 text-blue-700',
-  paid: 'bg-green-100 text-green-700',
-  overdue: 'bg-red-100 text-red-700',
-  cancelled: 'bg-gray-200 text-gray-500',
+const INVOICE_TYPE_COLOR: Record<string, string> = { customer: 'blue', supplier: 'orange' }
+const STATUS_COLOR: Record<string, string> = {
+  draft: 'gray', sent: 'blue', paid: 'green', overdue: 'red', cancelled: 'gray',
 }
 
+const COLUMNS: ColumnDef<Invoice>[] = [
+  { key: 'reference', label: 'Reference', searchable: true },
+  {
+    key: 'invoice_type',
+    label: 'Type',
+    render: (row: Invoice) => (
+      <Badge color={INVOICE_TYPE_COLOR[row.invoice_type] ?? 'gray'}>
+        {row.invoice_type.charAt(0).toUpperCase() + row.invoice_type.slice(1)}
+      </Badge>
+    ),
+  },
+  { key: 'partner_name', label: 'Partner',    searchable: true },
+  { key: 'issue_date',   label: 'Issue Date', type: 'date' },
+  { key: 'due_date',     label: 'Due Date',   type: 'date' },
+  { key: 'total_amount', label: 'Total',      type: 'currency' },
+  { key: 'amount_paid',  label: 'Paid',       type: 'currency' },
+  {
+    key: 'status',
+    label: 'Status',
+    render: (row: Invoice) => (
+      <Badge color={STATUS_COLOR[row.status] ?? 'gray'}>
+        {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
+      </Badge>
+    ),
+  },
+]
+
+const FIELDS: FormFieldDef[] = [
+  {
+    key: 'invoice_type',
+    label: 'Invoice Type',
+    type: 'select',
+    options: [
+      { value: 'customer', label: 'Customer' },
+      { value: 'supplier', label: 'Supplier' },
+    ],
+  },
+  { key: 'partner_name', label: 'Partner Name', type: 'text',     required: true },
+  { key: 'issue_date',   label: 'Issue Date',   type: 'date',     required: true },
+  { key: 'due_date',     label: 'Due Date',     type: 'date' },
+  { key: 'notes',        label: 'Notes',        type: 'textarea', span: 2 },
+]
+
+const PAYMENT_FIELDS: FormFieldDef[] = [
+  { key: 'amount_paid', label: 'Amount Paid', type: 'currency', required: true },
+]
+
 export default function Invoices() {
-  const { data, isLoading } = useQuery({
+  const qc = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const [formData, setFormData] = useState<Record<string, unknown>>({})
+
+  const [paymentOpen, setPaymentOpen] = useState(false)
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [paymentData, setPaymentData] = useState<Record<string, unknown>>({ amount_paid: 0 })
+
+  const { data, isLoading } = useQuery<Invoice[]>({
     queryKey: ['invoices'],
-    queryFn: () => accountingApi.listInvoices(),
+    queryFn: () => accountingApi.listInvoices().then(r => r.data),
   })
 
-  const columns = [
-    { key: 'reference', label: 'Reference' },
-    { key: 'invoice_type', label: 'Type', render: (row: Invoice) => (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${row.invoice_type === 'customer' ? 'bg-blue-50 text-blue-600' : 'bg-orange-50 text-orange-600'}`}>
-        {row.invoice_type}
-      </span>
-    )},
-    { key: 'partner_name', label: 'Partner' },
-    { key: 'issue_date', label: 'Date' },
-    { key: 'due_date', label: 'Due Date' },
-    { key: 'total_amount', label: 'Total', render: (row: Invoice) => `$${row.total_amount.toLocaleString()}` },
-    { key: 'amount_paid', label: 'Paid', render: (row: Invoice) => `$${row.amount_paid.toLocaleString()}` },
+  const createMutation = useMutation({
+    mutationFn: (d: Record<string, unknown>) => accountingApi.createInvoice(d),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['invoices'] })
+      setOpen(false)
+    },
+  })
+
+  const paymentMutation = useMutation({
+    mutationFn: (d: Record<string, unknown>) => accountingApi.addPayment(selectedId!, d),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['invoices'] })
+      setPaymentOpen(false)
+    },
+  })
+
+  const rowActions: RowAction<Invoice>[] = [
     {
-      key: 'status', label: 'Status',
-      render: (row: Invoice) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[row.status]}`}>{row.status}</span>
-      ),
+      key: 'payment',
+      label: 'Record Payment',
+      onClick: (r) => {
+        setSelectedId(r.id)
+        setPaymentData({ amount_paid: 0 })
+        setPaymentOpen(true)
+      },
     },
   ]
 
   return (
-    <div>
-      <Header title="Accounting — Invoices" />
-      <div className="p-6 space-y-4">
-        <p className="text-gray-500 text-sm">{data?.data?.length ?? 0} invoices</p>
-        <div className="card">
-          <DataTable<Invoice> columns={columns} data={data?.data ?? []} loading={isLoading} />
-        </div>
+    <PageTemplate
+      title="Invoices"
+      breadcrumbs={[{ label: 'Accounting' }, { label: 'Invoices' }]}
+      actions={[{
+        key: 'new',
+        label: 'New Invoice',
+        icon: <Plus size={14} />,
+        variant: 'primary',
+        onClick: () => { setFormData({}); setOpen(true) },
+      }]}
+      loading={isLoading}
+    >
+      <div className="p-6">
+        <AdvancedTable<Invoice>
+          columns={COLUMNS}
+          data={data ?? []}
+          rowKey="id"
+          rowActions={rowActions}
+          searchPlaceholder="Search invoices..."
+          emptyText="No invoices found"
+        />
       </div>
-    </div>
+
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="New Invoice"
+        size="md"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button
+              variant="primary"
+              loading={createMutation.isPending}
+              onClick={() => createMutation.mutate(formData)}
+            >
+              Save
+            </Button>
+          </div>
+        }
+      >
+        <FormView fields={FIELDS} data={formData} onChange={setFormData} readOnly={false} />
+      </Modal>
+
+      <Modal
+        open={paymentOpen}
+        onClose={() => setPaymentOpen(false)}
+        title="Record Payment"
+        size="sm"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setPaymentOpen(false)}>Cancel</Button>
+            <Button
+              variant="primary"
+              loading={paymentMutation.isPending}
+              onClick={() => paymentMutation.mutate(paymentData)}
+            >
+              Confirm
+            </Button>
+          </div>
+        }
+      >
+        <FormView fields={PAYMENT_FIELDS} data={paymentData} onChange={setPaymentData} readOnly={false} />
+      </Modal>
+    </PageTemplate>
   )
 }

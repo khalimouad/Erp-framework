@@ -29,6 +29,10 @@ import BOMList from '@/pages/manufacturing/BOMList'
 // Accounting
 import Invoices from '@/pages/accounting/Invoices'
 
+// Quality & Companies
+import Companies    from '@/pages/companies/Companies'
+import QualityChecks from '@/pages/quality/QualityChecks'
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -68,10 +72,10 @@ export default function App() {
           <Route path="/accounting" element={<Invoices />} />
 
           {/* Quality */}
-          <Route path="/quality" element={<div className="p-6"><h2 className="text-xl font-semibold">Quality Control — Coming Soon</h2></div>} />
+          <Route path="/quality" element={<QualityChecks />} />
 
           {/* Companies & Users */}
-          <Route path="/companies" element={<div className="p-6"><h2 className="text-xl font-semibold">Companies</h2><p className="text-gray-500 mt-2">API: /api/v1/companies</p></div>} />
+          <Route path="/companies" element={<Companies />} />
           <Route path="/users" element={<Users />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />

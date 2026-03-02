@@ -1,94 +1,118 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
-import Header from '@/components/Layout/Header'
-import DataTable from '@/components/common/DataTable'
-import { hrApi } from '@/api/client'
+import { PageTemplate }  from '@/components/layout/PageTemplate'
+import { AdvancedTable } from '@/components/table/AdvancedTable'
+import { Modal }         from '@/components/ui/Modal'
+import { Button }        from '@/components/ui/Button'
+import { Badge }         from '@/components/ui/Badge'
+import { FormView }      from '@/components/form/FormView'
+import { hrApi }         from '@/api/client'
 import type { Employee } from '@/types'
+import type { ColumnDef, RowAction, FormFieldDef } from '@/types/ui'
+
+const COLUMNS: ColumnDef<Employee>[] = [
+  {
+    key: 'name',
+    label: 'Name',
+    render: (row: Employee) => `${row.first_name} ${row.last_name}`,
+  },
+  { key: 'job_title',  label: 'Job Title' },
+  { key: 'work_email', label: 'Email', type: 'email', searchable: true },
+  { key: 'salary',     label: 'Salary', type: 'currency' },
+  {
+    key: 'is_active',
+    label: 'Status',
+    render: (row: Employee) => (
+      <Badge color={row.is_active ? 'green' : 'gray'} dot>
+        {row.is_active ? 'Active' : 'Inactive'}
+      </Badge>
+    ),
+  },
+]
+
+const FIELDS: FormFieldDef[] = [
+  { key: 'first_name', label: 'First Name', type: 'text',     required: true },
+  { key: 'last_name',  label: 'Last Name',  type: 'text',     required: true },
+  { key: 'job_title',  label: 'Job Title',  type: 'text' },
+  { key: 'work_email', label: 'Work Email', type: 'email' },
+  { key: 'salary',     label: 'Salary',     type: 'currency', placeholder: '$' },
+  { key: 'is_active',  label: 'Active',     type: 'boolean' },
+]
 
 export default function Employees() {
   const qc = useQueryClient()
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ first_name: '', last_name: '', job_title: '', work_email: '', salary: 0 })
+  const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState<Employee | null>(null)
+  const [formData, setFormData] = useState<Record<string, unknown>>({})
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading } = useQuery<Employee[]>({
     queryKey: ['employees'],
-    queryFn: () => hrApi.listEmployees(),
+    queryFn: () => hrApi.listEmployees().then(r => r.data),
   })
 
-  const createMutation = useMutation({
-    mutationFn: () => hrApi.createEmployee(form),
+  const saveMutation = useMutation({
+    mutationFn: (d: Record<string, unknown>) =>
+      editing ? hrApi.updateEmployee(editing.id, d) : hrApi.createEmployee(d),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['employees'] })
-      setShowForm(false)
-      setForm({ first_name: '', last_name: '', job_title: '', work_email: '', salary: 0 })
+      setOpen(false)
+      setEditing(null)
     },
   })
 
-  const columns = [
-    { key: 'first_name', label: 'First Name' },
-    { key: 'last_name', label: 'Last Name' },
-    { key: 'job_title', label: 'Job Title' },
-    { key: 'work_email', label: 'Email' },
-    { key: 'salary', label: 'Salary', render: (row: Employee) => `$${row.salary.toLocaleString()}` },
+  const rowActions: RowAction<Employee>[] = [
     {
-      key: 'is_active',
-      label: 'Status',
-      render: (row: Employee) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${row.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-          {row.is_active ? 'Active' : 'Inactive'}
-        </span>
-      ),
+      key: 'edit',
+      label: 'Edit',
+      onClick: (r) => { setEditing(r); setFormData({ ...r }); setOpen(true) },
     },
   ]
 
   return (
-    <div>
-      <Header title="HR — Employees" />
-      <div className="p-6 space-y-4">
-        <div className="flex justify-between items-center">
-          <p className="text-gray-500 text-sm">{data?.data?.length ?? 0} employees</p>
-          <button className="btn-primary" onClick={() => setShowForm(true)}>
-            <Plus size={16} /> New Employee
-          </button>
-        </div>
-
-        {showForm && (
-          <div className="card p-6 space-y-4">
-            <h3 className="font-semibold">New Employee</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="label">First Name *</label>
-                <input className="input" value={form.first_name} onChange={e => setForm({ ...form, first_name: e.target.value })} />
-              </div>
-              <div>
-                <label className="label">Last Name *</label>
-                <input className="input" value={form.last_name} onChange={e => setForm({ ...form, last_name: e.target.value })} />
-              </div>
-              <div>
-                <label className="label">Job Title</label>
-                <input className="input" value={form.job_title} onChange={e => setForm({ ...form, job_title: e.target.value })} />
-              </div>
-              <div>
-                <label className="label">Work Email</label>
-                <input className="input" type="email" value={form.work_email} onChange={e => setForm({ ...form, work_email: e.target.value })} />
-              </div>
-              <div>
-                <label className="label">Salary</label>
-                <input className="input" type="number" value={form.salary} onChange={e => setForm({ ...form, salary: Number(e.target.value) })} />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button className="btn-primary" onClick={() => createMutation.mutate()} disabled={!form.first_name || !form.last_name}>Save</button>
-              <button className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
-            </div>
-          </div>
-        )}
-
-        <div className="card">
-          <DataTable<Employee> columns={columns} data={data?.data ?? []} loading={isLoading} />
-        </div>
+    <PageTemplate
+      title="Employees"
+      breadcrumbs={[{ label: 'HR' }, { label: 'Employees' }]}
+      actions={[{
+        key: 'new',
+        label: 'New Employee',
+        icon: <Plus size={14} />,
+        variant: 'primary',
+        onClick: () => { setEditing(null); setFormData({}); setOpen(true) },
+      }]}
+      loading={isLoading}
+    >
+      <div className="p-6">
+        <AdvancedTable<Employee>
+          columns={COLUMNS}
+          data={data ?? []}
+          rowKey="id"
+          rowActions={rowActions}
+          searchPlaceholder="Search employees..."
+          emptyText="No employees found"
+        />
       </div>
-    </div>
+
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={editing ? `Edit — ${editing.first_name} ${editing.last_name}` : 'New Employee'}
+        size="md"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button
+              variant="primary"
+              loading={saveMutation.isPending}
+              onClick={() => saveMutation.mutate(formData)}
+            >
+              Save
+            </Button>
+          </div>
+        }
+      >
+        <FormView fields={FIELDS} data={formData} onChange={setFormData} readOnly={false} />
+      </Modal>
+    </PageTemplate>
   )
 }

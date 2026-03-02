@@ -1,40 +1,49 @@
 import { useQuery } from '@tanstack/react-query'
-import Header from '@/components/Layout/Header'
-import DataTable from '@/components/common/DataTable'
+import { PageTemplate }    from '@/components/layout/PageTemplate'
+import { AdvancedTable }   from '@/components/table/AdvancedTable'
+import { Badge }           from '@/components/ui/Badge'
 import { manufacturingApi } from '@/api/client'
-import type { BOM } from '@/types'
+import type { BOM }        from '@/types'
+import type { ColumnDef }  from '@/types/ui'
+
+const COLUMNS: ColumnDef<BOM>[] = [
+  { key: 'id',         label: '#' },
+  { key: 'product_id', label: 'Product ID' },
+  { key: 'reference',  label: 'Reference', searchable: true },
+  { key: 'quantity',   label: 'Output Qty', type: 'number' },
+  {
+    key: 'is_active',
+    label: 'Status',
+    render: (row: BOM) => (
+      <Badge color={row.is_active ? 'green' : 'gray'} dot>
+        {row.is_active ? 'Active' : 'Inactive'}
+      </Badge>
+    ),
+  },
+  { key: 'created_at', label: 'Created', type: 'date' },
+]
 
 export default function BOMList() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading } = useQuery<BOM[]>({
     queryKey: ['boms'],
-    queryFn: () => manufacturingApi.listBoms(),
+    queryFn: () => manufacturingApi.listBoms().then(r => r.data),
   })
 
-  const columns = [
-    { key: 'id', label: '#' },
-    { key: 'product_id', label: 'Product ID' },
-    { key: 'reference', label: 'Reference' },
-    { key: 'quantity', label: 'Output Qty' },
-    {
-      key: 'is_active', label: 'Status',
-      render: (row: BOM) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${row.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-          {row.is_active ? 'Active' : 'Inactive'}
-        </span>
-      ),
-    },
-    { key: 'created_at', label: 'Created', render: (row: BOM) => new Date(row.created_at).toLocaleDateString() },
-  ]
-
   return (
-    <div>
-      <Header title="Manufacturing — Bill of Materials" />
-      <div className="p-6 space-y-4">
-        <p className="text-gray-500 text-sm">{data?.data?.length ?? 0} BOMs</p>
-        <div className="card">
-          <DataTable<BOM> columns={columns} data={data?.data ?? []} loading={isLoading} />
-        </div>
+    <PageTemplate
+      title="Bill of Materials"
+      breadcrumbs={[{ label: 'Manufacturing' }, { label: 'Bill of Materials' }]}
+      loading={isLoading}
+    >
+      <div className="p-6">
+        <AdvancedTable<BOM>
+          columns={COLUMNS}
+          data={data ?? []}
+          rowKey="id"
+          searchPlaceholder="Search BOMs..."
+          emptyText="No bills of materials found"
+        />
       </div>
-    </div>
+    </PageTemplate>
   )
 }

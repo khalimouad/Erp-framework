@@ -1,108 +1,151 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
-import Header from '@/components/Layout/Header'
-import DataTable from '@/components/common/DataTable'
+import { PageTemplate }  from '@/components/layout/PageTemplate'
+import { AdvancedTable } from '@/components/table/AdvancedTable'
+import { Modal }         from '@/components/ui/Modal'
+import { Button }        from '@/components/ui/Button'
+import { Badge }         from '@/components/ui/Badge'
+import { FormView }      from '@/components/form/FormView'
+import { LinesTable }    from '@/components/form/LinesTable'
 import { purchasingApi } from '@/api/client'
 import type { PurchaseOrder } from '@/types'
+import type { ColumnDef, RowAction, FormFieldDef, LineColumnDef } from '@/types/ui'
 
-const STATUS_COLORS: Record<string, string> = {
-  draft: 'bg-gray-100 text-gray-600',
-  sent: 'bg-blue-100 text-blue-700',
-  received: 'bg-green-100 text-green-700',
-  cancelled: 'bg-red-100 text-red-700',
+const STATUS_COLOR: Record<string, string> = {
+  draft: 'gray', sent: 'blue', received: 'green', cancelled: 'red',
 }
+
+const COLUMNS: ColumnDef<PurchaseOrder>[] = [
+  { key: 'reference',   label: 'Reference', searchable: true },
+  { key: 'vendor_name', label: 'Vendor',    searchable: true },
+  {
+    key: 'status',
+    label: 'Status',
+    render: (row: PurchaseOrder) => (
+      <Badge color={STATUS_COLOR[row.status] ?? 'gray'}>
+        {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
+      </Badge>
+    ),
+  },
+  { key: 'total_amount', label: 'Total', type: 'currency' },
+  { key: 'created_at',   label: 'Date',  type: 'date' },
+]
+
+const FIELDS: FormFieldDef[] = [
+  { key: 'vendor_name',  label: 'Vendor Name',  type: 'text',  required: true },
+  { key: 'vendor_email', label: 'Vendor Email', type: 'email' },
+]
+
+const LINE_COLUMNS: LineColumnDef[] = [
+  { key: 'description', label: 'Description', type: 'text',     editable: true },
+  { key: 'quantity',    label: 'Qty',         type: 'number',   editable: true, width: '100px' },
+  { key: 'unit_price',  label: 'Unit Price',  type: 'currency', editable: true, width: '120px' },
+  { key: 'subtotal',    label: 'Subtotal',    type: 'currency', editable: false, width: '120px' },
+]
+
+type OrderLine = { description: string; quantity: number; unit_price: number; subtotal?: number }
 
 export default function PurchaseOrders() {
   const qc = useQueryClient()
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ vendor_name: '', vendor_email: '', lines: [] as { description: string; quantity: number; unit_price: number }[] })
-  const [line, setLine] = useState({ description: '', quantity: 1, unit_price: 0 })
+  const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState<PurchaseOrder | null>(null)
+  const [formData, setFormData] = useState<Record<string, unknown>>({})
+  const [lines, setLines] = useState<OrderLine[]>([])
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading } = useQuery<PurchaseOrder[]>({
     queryKey: ['purchase-orders'],
-    queryFn: () => purchasingApi.listOrders(),
+    queryFn: () => purchasingApi.listOrders().then(r => r.data),
   })
 
-  const createMutation = useMutation({
-    mutationFn: () => purchasingApi.createOrder(form),
+  const saveMutation = useMutation({
+    mutationFn: (d: Record<string, unknown>) =>
+      editing ? purchasingApi.updateOrder(editing.id, d) : purchasingApi.createOrder(d),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['purchase-orders'] })
-      setShowForm(false)
-      setForm({ vendor_name: '', vendor_email: '', lines: [] })
+      setOpen(false)
+      setEditing(null)
     },
   })
 
-  const addLine = () => {
-    if (!line.description) return
-    setForm({ ...form, lines: [...form.lines, { ...line }] })
-    setLine({ description: '', quantity: 1, unit_price: 0 })
-  }
-
-  const columns = [
-    { key: 'reference', label: 'Reference' },
-    { key: 'vendor_name', label: 'Vendor' },
+  const rowActions: RowAction<PurchaseOrder>[] = [
     {
-      key: 'status', label: 'Status',
-      render: (row: PurchaseOrder) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[row.status]}`}>{row.status}</span>
-      ),
+      key: 'edit',
+      label: 'Edit',
+      onClick: (r) => {
+        setEditing(r)
+        setFormData({ ...r })
+        setLines((r as PurchaseOrder & { lines?: OrderLine[] }).lines ?? [])
+        setOpen(true)
+      },
     },
-    { key: 'total_amount', label: 'Total', render: (row: PurchaseOrder) => `$${row.total_amount.toLocaleString()}` },
-    { key: 'created_at', label: 'Date', render: (row: PurchaseOrder) => new Date(row.created_at).toLocaleDateString() },
   ]
 
+  const computedLines = lines.map(l => ({
+    ...l,
+    subtotal: (l.quantity ?? 0) * (l.unit_price ?? 0),
+  }))
+
+  const openNew = () => {
+    setEditing(null)
+    setFormData({})
+    setLines([])
+    setOpen(true)
+  }
+
   return (
-    <div>
-      <Header title="Purchasing — Orders" />
-      <div className="p-6 space-y-4">
-        <div className="flex justify-between items-center">
-          <p className="text-gray-500 text-sm">{data?.data?.length ?? 0} orders</p>
-          <button className="btn-primary" onClick={() => setShowForm(true)}><Plus size={16} /> New PO</button>
-        </div>
-
-        {showForm && (
-          <div className="card p-6 space-y-4">
-            <h3 className="font-semibold">New Purchase Order</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="label">Vendor Name *</label>
-                <input className="input" value={form.vendor_name} onChange={e => setForm({ ...form, vendor_name: e.target.value })} />
-              </div>
-              <div>
-                <label className="label">Vendor Email</label>
-                <input className="input" type="email" value={form.vendor_email} onChange={e => setForm({ ...form, vendor_email: e.target.value })} />
-              </div>
-            </div>
-
-            <div className="border rounded-lg p-4 space-y-3">
-              <h4 className="text-sm font-medium">Order Lines</h4>
-              {form.lines.map((l, i) => (
-                <div key={i} className="text-sm text-gray-600 flex gap-4">
-                  <span className="flex-1">{l.description}</span>
-                  <span>qty: {l.quantity}</span>
-                  <span className="font-medium">${(l.quantity * l.unit_price).toFixed(2)}</span>
-                </div>
-              ))}
-              <div className="flex gap-2">
-                <input className="input flex-1" placeholder="Description" value={line.description} onChange={e => setLine({ ...line, description: e.target.value })} />
-                <input className="input w-24" type="number" placeholder="Qty" value={line.quantity} onChange={e => setLine({ ...line, quantity: Number(e.target.value) })} />
-                <input className="input w-28" type="number" placeholder="Price" value={line.unit_price} onChange={e => setLine({ ...line, unit_price: Number(e.target.value) })} />
-                <button className="btn-secondary" onClick={addLine}>Add</button>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <button className="btn-primary" onClick={() => createMutation.mutate()} disabled={!form.vendor_name}>Save</button>
-              <button className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
-            </div>
-          </div>
-        )}
-
-        <div className="card">
-          <DataTable<PurchaseOrder> columns={columns} data={data?.data ?? []} loading={isLoading} />
-        </div>
+    <PageTemplate
+      title="Purchase Orders"
+      breadcrumbs={[{ label: 'Purchasing' }, { label: 'Orders' }]}
+      actions={[{
+        key: 'new',
+        label: 'New PO',
+        icon: <Plus size={14} />,
+        variant: 'primary',
+        onClick: openNew,
+      }]}
+      loading={isLoading}
+    >
+      <div className="p-6">
+        <AdvancedTable<PurchaseOrder>
+          columns={COLUMNS}
+          data={data ?? []}
+          rowKey="id"
+          rowActions={rowActions}
+          searchPlaceholder="Search purchase orders..."
+          emptyText="No purchase orders found"
+        />
       </div>
-    </div>
+
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={editing ? `Edit — ${editing.reference}` : 'New Purchase Order'}
+        size="lg"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button
+              variant="primary"
+              loading={saveMutation.isPending}
+              onClick={() => saveMutation.mutate({ ...formData, lines: computedLines })}
+            >
+              Save
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <FormView fields={FIELDS} data={formData} onChange={setFormData} readOnly={false} />
+          <LinesTable
+            columns={LINE_COLUMNS}
+            rows={computedLines}
+            onChange={setLines}
+            readOnly={false}
+            addLabel="Add Line"
+          />
+        </div>
+      </Modal>
+    </PageTemplate>
   )
 }

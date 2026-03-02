@@ -1,81 +1,118 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
-import Header from '@/components/Layout/Header'
-import DataTable from '@/components/common/DataTable'
+import { PageTemplate }    from '@/components/layout/PageTemplate'
+import { AdvancedTable }   from '@/components/table/AdvancedTable'
+import { Modal }           from '@/components/ui/Modal'
+import { Button }          from '@/components/ui/Button'
+import { Badge }           from '@/components/ui/Badge'
+import { FormView }        from '@/components/form/FormView'
 import { manufacturingApi } from '@/api/client'
-import type { WorkOrder } from '@/types'
+import type { WorkOrder }  from '@/types'
+import type { ColumnDef, RowAction, FormFieldDef } from '@/types/ui'
 
-const STATUS_COLORS: Record<string, string> = {
-  draft: 'bg-gray-100 text-gray-600',
-  confirmed: 'bg-blue-100 text-blue-700',
-  in_progress: 'bg-yellow-100 text-yellow-700',
-  done: 'bg-green-100 text-green-700',
-  cancelled: 'bg-red-100 text-red-700',
+const STATUS_COLOR: Record<string, string> = {
+  draft: 'gray', confirmed: 'blue', in_progress: 'yellow', done: 'green', cancelled: 'red',
 }
+
+const COLUMNS: ColumnDef<WorkOrder>[] = [
+  { key: 'reference',        label: 'Reference',   searchable: true },
+  { key: 'bom_id',           label: 'BOM ID' },
+  { key: 'quantity_planned', label: 'Planned Qty', type: 'number' },
+  { key: 'quantity_produced', label: 'Produced',   type: 'number' },
+  {
+    key: 'status',
+    label: 'Status',
+    render: (row: WorkOrder) => (
+      <Badge color={STATUS_COLOR[row.status] ?? 'gray'}>
+        {row.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+      </Badge>
+    ),
+  },
+  { key: 'scheduled_start', label: 'Start', type: 'date' },
+]
+
+const FIELDS: FormFieldDef[] = [
+  { key: 'bom_id',           label: 'BOM ID',             type: 'number',   required: true },
+  { key: 'quantity_planned', label: 'Quantity to Produce', type: 'number',   required: true },
+  { key: 'scheduled_start',  label: 'Scheduled Start',    type: 'datetime' },
+  { key: 'scheduled_end',    label: 'Scheduled End',      type: 'datetime' },
+  { key: 'notes',            label: 'Notes',              type: 'textarea', span: 2 },
+]
 
 export default function WorkOrders() {
   const qc = useQueryClient()
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ bom_id: '', quantity_planned: 1, scheduled_start: '', scheduled_end: '', notes: '' })
+  const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState<WorkOrder | null>(null)
+  const [formData, setFormData] = useState<Record<string, unknown>>({})
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading } = useQuery<WorkOrder[]>({
     queryKey: ['work-orders'],
-    queryFn: () => manufacturingApi.listWorkOrders(),
+    queryFn: () => manufacturingApi.listWorkOrders().then(r => r.data),
   })
 
-  const createMutation = useMutation({
-    mutationFn: () => manufacturingApi.createWorkOrder({ ...form, bom_id: Number(form.bom_id) }),
+  const saveMutation = useMutation({
+    mutationFn: (d: Record<string, unknown>) =>
+      editing ? manufacturingApi.updateWorkOrder(editing.id, d) : manufacturingApi.createWorkOrder(d),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['work-orders'] })
-      setShowForm(false)
+      setOpen(false)
+      setEditing(null)
     },
   })
 
-  const columns = [
-    { key: 'reference', label: 'Reference' },
-    { key: 'bom_id', label: 'BOM ID' },
-    { key: 'quantity_planned', label: 'Planned Qty' },
-    { key: 'quantity_produced', label: 'Produced' },
+  const rowActions: RowAction<WorkOrder>[] = [
     {
-      key: 'status', label: 'Status',
-      render: (row: WorkOrder) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[row.status]}`}>{row.status.replace('_', ' ')}</span>
-      ),
+      key: 'edit',
+      label: 'Edit',
+      onClick: (r) => { setEditing(r); setFormData({ ...r }); setOpen(true) },
     },
-    { key: 'scheduled_start', label: 'Start', render: (row: WorkOrder) => row.scheduled_start ? new Date(row.scheduled_start).toLocaleDateString() : '-' },
   ]
 
   return (
-    <div>
-      <Header title="Manufacturing — Work Orders" />
-      <div className="p-6 space-y-4">
-        <div className="flex justify-between items-center">
-          <p className="text-gray-500 text-sm">{data?.data?.length ?? 0} work orders</p>
-          <button className="btn-primary" onClick={() => setShowForm(true)}><Plus size={16} /> New Work Order</button>
-        </div>
-
-        {showForm && (
-          <div className="card p-6 space-y-4">
-            <h3 className="font-semibold">New Work Order</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="label">BOM ID *</label><input className="input" type="number" value={form.bom_id} onChange={e => setForm({ ...form, bom_id: e.target.value })} /></div>
-              <div><label className="label">Quantity to Produce *</label><input className="input" type="number" value={form.quantity_planned} onChange={e => setForm({ ...form, quantity_planned: Number(e.target.value) })} /></div>
-              <div><label className="label">Scheduled Start</label><input className="input" type="datetime-local" value={form.scheduled_start} onChange={e => setForm({ ...form, scheduled_start: e.target.value })} /></div>
-              <div><label className="label">Scheduled End</label><input className="input" type="datetime-local" value={form.scheduled_end} onChange={e => setForm({ ...form, scheduled_end: e.target.value })} /></div>
-              <div className="col-span-2"><label className="label">Notes</label><textarea className="input" rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
-            </div>
-            <div className="flex gap-2">
-              <button className="btn-primary" onClick={() => createMutation.mutate()} disabled={!form.bom_id}>Save</button>
-              <button className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
-            </div>
-          </div>
-        )}
-
-        <div className="card">
-          <DataTable<WorkOrder> columns={columns} data={data?.data ?? []} loading={isLoading} />
-        </div>
+    <PageTemplate
+      title="Work Orders"
+      breadcrumbs={[{ label: 'Manufacturing' }, { label: 'Work Orders' }]}
+      actions={[{
+        key: 'new',
+        label: 'New Work Order',
+        icon: <Plus size={14} />,
+        variant: 'primary',
+        onClick: () => { setEditing(null); setFormData({}); setOpen(true) },
+      }]}
+      loading={isLoading}
+    >
+      <div className="p-6">
+        <AdvancedTable<WorkOrder>
+          columns={COLUMNS}
+          data={data ?? []}
+          rowKey="id"
+          rowActions={rowActions}
+          searchPlaceholder="Search work orders..."
+          emptyText="No work orders found"
+        />
       </div>
-    </div>
+
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={editing ? `Edit — ${editing.reference}` : 'New Work Order'}
+        size="md"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button
+              variant="primary"
+              loading={saveMutation.isPending}
+              onClick={() => saveMutation.mutate(formData)}
+            >
+              Save
+            </Button>
+          </div>
+        }
+      >
+        <FormView fields={FIELDS} data={formData} onChange={setFormData} readOnly={false} />
+      </Modal>
+    </PageTemplate>
   )
 }
