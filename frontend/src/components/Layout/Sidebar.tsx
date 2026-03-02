@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Users, Building2, Settings, LogOut, ChevronDown } from 'lucide-react'
+import { LayoutDashboard, Users, Building2, Settings, LogOut, ChevronDown, Search } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
 import { useVerticalStore } from '@/store/vertical'
 import { VERTICALS } from '@/config/verticals'
@@ -12,7 +12,11 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? 'bg-primary-700 text-white' : 'text-primary-200 hover:bg-primary-800 hover:text-white',
   )
 
-export default function Sidebar() {
+interface SidebarProps {
+  onSearch: () => void
+}
+
+export default function Sidebar({ onSearch }: SidebarProps) {
   const { user, logout } = useAuthStore()
   const { vertical, setVertical } = useVerticalStore()
   const [showPicker, setShowPicker] = useState(false)
@@ -55,6 +59,21 @@ export default function Sidebar() {
           ))}
         </div>
       )}
+
+      {/* Search button */}
+      <div className="px-4 py-3 border-b border-primary-800">
+        <button
+          onClick={onSearch}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg bg-primary-800 hover:bg-primary-700 text-primary-300 hover:text-white text-sm transition-colors group"
+        >
+          <Search size={14} className="shrink-0" />
+          <span className="flex-1 text-left text-xs">Search...</span>
+          <span className="hidden sm:inline-flex items-center gap-0.5">
+            <kbd className="px-1 py-0.5 text-[10px] rounded bg-primary-700 group-hover:bg-primary-600 border border-primary-600 font-mono">⌘</kbd>
+            <kbd className="px-1 py-0.5 text-[10px] rounded bg-primary-700 group-hover:bg-primary-600 border border-primary-600 font-mono">K</kbd>
+          </span>
+        </button>
+      </div>
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">

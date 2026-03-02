@@ -142,6 +142,11 @@ export const companiesApi = {
   create: (data: object) => api.post('/companies/', data),
 }
 
+// --- AI Assistant ---
+export const aiApi = {
+  ask: (question: string) => api.post('/ai/ask', { question }),
+}
+
 // --- Base (module registry + system config + roles) ---
 export const baseApi = {
   // Modules

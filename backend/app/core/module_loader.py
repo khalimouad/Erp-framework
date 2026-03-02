@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 # Core modules always loaded regardless of vertical.
 # 'base' must be first — it bootstraps the module registry, config, and sequences.
-CORE_MODULES = ["base", "users", "companies"]
+CORE_MODULES = ["base", "users", "companies", "ai"]
 
 # Per-vertical module bundles (appended to CORE_MODULES)
 VERTICAL_MODULES: dict[str, list[str]] = {
