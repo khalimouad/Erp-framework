@@ -40,3 +40,65 @@ async def require_superadmin(current_user=Depends(get_current_user)):
     if not current_user.is_superadmin:
         raise HTTPException(status_code=403, detail="Superadmin access required")
     return current_user
+
+
+def require_permission(resource: str, action: str = "read"):
+    """
+    FastAPI dependency factory — checks the current user has the required
+    permission on the given resource before the endpoint runs.
+
+    Superadmin bypasses all permission checks automatically.
+
+    Actions: read | write | create | delete
+
+    Usage:
+        @router.delete("/{id}")
+        async def delete_lead(
+            id: int,
+            user=Depends(require_permission("crm.lead", "delete")),
+            db=Depends(get_db),
+        ):
+            ...
+    """
+    async def _check(
+        current_user=Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+    ):
+        if current_user.is_superadmin:
+            return current_user
+
+        from app.modules.users.models import IrUserRole
+        from app.modules.base.models import IrPermission
+
+        action_col = {
+            "read":   IrPermission.can_read,
+            "write":  IrPermission.can_write,
+            "create": IrPermission.can_create,
+            "delete": IrPermission.can_delete,
+        }.get(action)
+
+        if action_col is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unknown permission action '{action}'. Use: read, write, create, delete",
+            )
+
+        q = (
+            select(IrPermission.id)
+            .join(IrUserRole, IrUserRole.role_id == IrPermission.role_id)
+            .where(
+                IrUserRole.user_id == current_user.id,
+                IrPermission.resource == resource,
+                action_col.is_(True),
+            )
+            .limit(1)
+        )
+        result = await db.execute(q)
+        if result.scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Permission denied: '{action}' on '{resource}'",
+            )
+        return current_user
+
+    return _check

@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 
-from app.modules.base.models import IrModule, IrConfig, IrSequence
+from app.modules.base.models import IrModule, IrConfig, IrSequence, IrRole, IrPermission
 from app.modules.base.data import DEFAULT_CONFIGS, DEFAULT_SEQUENCES
 
 logger = logging.getLogger(__name__)
@@ -31,11 +31,12 @@ _MODULES_DIR = pathlib.Path(__file__).parent.parent  # app/modules/
 async def bootstrap(db: AsyncSession) -> None:
     """
     Scan all module directories for a manifest.py, upsert IrModule rows,
-    and seed default config / sequence rows on first boot.
+    seed default config / sequence rows, and register module-declared roles.
     """
     await _sync_manifests(db)
     await _seed_configs(db)
     await _seed_sequences(db)
+    await _sync_roles(db)
     await db.commit()
     logger.info("Base bootstrap complete")
 
@@ -96,6 +97,74 @@ async def _seed_sequences(db: AsyncSession) -> None:
         )
         if result.scalar_one_or_none() is None:
             db.add(IrSequence(**seq))
+
+
+async def _sync_roles(db: AsyncSession) -> None:
+    """
+    Scan all manifests for a 'roles' key and upsert IrRole + IrPermission rows.
+
+    Manifest role format:
+        "roles": [
+            {
+                "name": "crm.manager",
+                "label": "CRM Manager",
+                "description": "...",
+                "permissions": [
+                    {"resource": "crm.lead", "read": True, "write": True, "create": True, "delete": True},
+                ],
+            },
+        ]
+    """
+    for module_dir in sorted(_MODULES_DIR.iterdir()):
+        if not module_dir.is_dir() or module_dir.name.startswith("_"):
+            continue
+        try:
+            mod = importlib.import_module(f"app.modules.{module_dir.name}.manifest")
+            m = mod.MANIFEST
+        except (ModuleNotFoundError, AttributeError):
+            continue
+
+        for role_def in m.get("roles", []):
+            # Upsert role
+            res = await db.execute(select(IrRole).where(IrRole.name == role_def["name"]))
+            role = res.scalar_one_or_none()
+            if role is None:
+                role = IrRole(
+                    name=role_def["name"],
+                    label=role_def.get("label", role_def["name"]),
+                    module=m["name"],
+                    description=role_def.get("description"),
+                )
+                db.add(role)
+                await db.flush()
+                logger.info(f"  [base] registered role: {role_def['name']}")
+            else:
+                role.label = role_def.get("label", role.label)
+                role.description = role_def.get("description", role.description)
+
+            # Upsert permissions
+            for perm_def in role_def.get("permissions", []):
+                p_res = await db.execute(
+                    select(IrPermission).where(
+                        IrPermission.role_id == role.id,
+                        IrPermission.resource == perm_def["resource"],
+                    )
+                )
+                perm = p_res.scalar_one_or_none()
+                if perm is None:
+                    db.add(IrPermission(
+                        role_id=role.id,
+                        resource=perm_def["resource"],
+                        can_read=perm_def.get("read", True),
+                        can_write=perm_def.get("write", False),
+                        can_create=perm_def.get("create", False),
+                        can_delete=perm_def.get("delete", False),
+                    ))
+                else:
+                    perm.can_read = perm_def.get("read", perm.can_read)
+                    perm.can_write = perm_def.get("write", perm.can_write)
+                    perm.can_create = perm_def.get("create", perm.can_create)
+                    perm.can_delete = perm_def.get("delete", perm.can_delete)
 
 
 # ── state sync ────────────────────────────────────────────────────────────────
@@ -194,6 +263,31 @@ async def install_module(db: AsyncSession, name: str) -> IrModule:
     await db.refresh(mod)
     return mod
 
+
+# ── roles ─────────────────────────────────────────────────────────────────────
+
+async def list_roles(db: AsyncSession, module: str | None = None) -> list[IrRole]:
+    from sqlalchemy.orm import selectinload
+    q = select(IrRole).options(selectinload(IrRole.permissions))
+    if module:
+        q = q.where(IrRole.module == module)
+    result = await db.execute(q.order_by(IrRole.module, IrRole.name))
+    return list(result.scalars().all())
+
+
+async def get_role(db: AsyncSession, role_id: int) -> IrRole:
+    from fastapi import HTTPException
+    from sqlalchemy.orm import selectinload
+    result = await db.execute(
+        select(IrRole).options(selectinload(IrRole.permissions)).where(IrRole.id == role_id)
+    )
+    role = result.scalar_one_or_none()
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+    return role
+
+
+# ── module install / uninstall ────────────────────────────────────────────────
 
 async def uninstall_module(db: AsyncSession, name: str) -> IrModule:
     from fastapi import HTTPException

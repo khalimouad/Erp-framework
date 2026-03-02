@@ -55,3 +55,27 @@ class SequenceOut(BaseModel):
     next_number: int
 
     model_config = {"from_attributes": True}
+
+
+# ── IrRole / IrPermission ─────────────────────────────────────────────────────
+
+class PermissionOut(BaseModel):
+    id: int
+    resource: str
+    can_read: bool
+    can_write: bool
+    can_create: bool
+    can_delete: bool
+
+    model_config = {"from_attributes": True}
+
+
+class RoleOut(BaseModel):
+    id: int
+    name: str
+    label: str
+    module: str
+    description: Optional[str]
+    permissions: list[PermissionOut] = []
+
+    model_config = {"from_attributes": True}

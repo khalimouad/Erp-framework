@@ -44,6 +44,18 @@ export const authApi = {
   me: () => api.get('/users/me'),
 }
 
+// --- Users ---
+export const usersApi = {
+  list: (skip = 0, limit = 50) => api.get(`/users/?skip=${skip}&limit=${limit}`),
+  get: (id: number) => api.get(`/users/${id}`),
+  create: (data: object) => api.post('/users/', data),
+  update: (id: number, data: object) => api.patch(`/users/${id}`, data),
+  // Role assignment
+  listRoles: (userId: number) => api.get(`/users/${userId}/roles`),
+  assignRole: (userId: number, roleId: number) => api.post(`/users/${userId}/roles`, { role_id: roleId }),
+  revokeRole: (userId: number, roleId: number) => api.delete(`/users/${userId}/roles/${roleId}`),
+}
+
 // --- CRM ---
 export const crmApi = {
   listLeads: (skip = 0, limit = 50) => api.get(`/crm/leads?skip=${skip}&limit=${limit}`),
@@ -130,7 +142,7 @@ export const companiesApi = {
   create: (data: object) => api.post('/companies/', data),
 }
 
-// --- Base (module registry + system config) ---
+// --- Base (module registry + system config + roles) ---
 export const baseApi = {
   // Modules
   listModules: () => api.get('/base/modules'),
@@ -143,4 +155,8 @@ export const baseApi = {
     api.put(`/base/config/${key}`, { value }),
   // Sequences
   listSequences: () => api.get('/base/sequences'),
+  // Roles
+  listRoles: (module?: string) =>
+    api.get('/base/roles' + (module ? `?module=${module}` : '')),
+  getRole: (id: number) => api.get(`/base/roles/${id}`),
 }

@@ -103,3 +103,24 @@ async def list_sequences(
     from app.modules.base.models import IrSequence
     result = await db.execute(select(IrSequence).order_by(IrSequence.code))
     return list(result.scalars().all())
+
+
+# ── Roles ─────────────────────────────────────────────────────────────────────
+
+@router.get("/roles", response_model=list[schemas.RoleOut])
+async def list_roles(
+    module: str | None = None,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """List all registered roles, optionally filtered by module."""
+    return await service.list_roles(db, module)
+
+
+@router.get("/roles/{role_id}", response_model=schemas.RoleOut)
+async def get_role(
+    role_id: int,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    return await service.get_role(db, role_id)

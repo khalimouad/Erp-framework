@@ -4,6 +4,9 @@ import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import Settings from '@/pages/Settings'
 
+// Base
+import Users from '@/pages/users/Users'
+
 // Core modules
 import Leads from '@/pages/crm/Leads'
 import LeadForm from '@/pages/crm/LeadForm'
@@ -69,7 +72,7 @@ export default function App() {
 
           {/* Companies & Users */}
           <Route path="/companies" element={<div className="p-6"><h2 className="text-xl font-semibold">Companies</h2><p className="text-gray-500 mt-2">API: /api/v1/companies</p></div>} />
-          <Route path="/users" element={<div className="p-6"><h2 className="text-xl font-semibold">Users</h2><p className="text-gray-500 mt-2">API: /api/v1/users</p></div>} />
+          <Route path="/users" element={<Users />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
