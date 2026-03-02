@@ -6,6 +6,7 @@ import Settings from '@/pages/Settings'
 
 // Core modules
 import Leads from '@/pages/crm/Leads'
+import LeadForm from '@/pages/crm/LeadForm'
 import Products from '@/pages/inventory/Products'
 import Employees from '@/pages/hr/Employees'
 
@@ -36,6 +37,8 @@ export default function App() {
 
           {/* CRM */}
           <Route path="/crm" element={<Leads />} />
+          <Route path="/crm/leads/new" element={<LeadForm />} />
+          <Route path="/crm/leads/:id" element={<LeadForm />} />
 
           {/* Inventory */}
           <Route path="/inventory" element={<Products />} />
