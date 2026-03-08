@@ -8,8 +8,9 @@ import { Button }        from '@/components/ui/Button'
 import { Badge }         from '@/components/ui/Badge'
 import { FormView }      from '@/components/form/FormView'
 import { LinesTable }    from '@/components/form/LinesTable'
-import { salesApi }      from '@/api/client'
-import type { SaleOrder } from '@/types'
+import { salesApi }       from '@/api/client'
+import { ResponsiveTable } from '@/components/views/ResponsiveTable'
+import type { SaleOrder }  from '@/types'
 import type { ColumnDef, RowAction, FormFieldDef, LineColumnDef } from '@/types/ui'
 
 const STATUS_COLOR: Record<string, string> = {
@@ -106,15 +107,39 @@ export default function SalesOrders() {
       }]}
       loading={isLoading}
     >
-      <div className="p-6">
-        <AdvancedTable<SaleOrder>
-          columns={COLUMNS}
-          data={data ?? []}
-          rowKey="id"
-          rowActions={rowActions}
-          searchPlaceholder="Search orders..."
-          emptyText="No orders found"
-        />
+      <div className="p-4 sm:p-6">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="sm:hidden">
+            <ResponsiveTable<SaleOrder>
+              columns={[
+                { key: 'reference',     label: 'Reference' },
+                { key: 'customer_name', label: 'Customer' },
+              ]}
+              data={data ?? []}
+              rowKey="id"
+              loading={isLoading}
+              buildRowActions={(r) => [{ key: 'edit', label: 'Edit', onClick: () => rowActions[0].onClick(r) }]}
+              onRowClick={(r) => rowActions[0].onClick(r)}
+              mobileStatusRender={(r) => (
+                <Badge color={STATUS_COLOR[r.status] ?? 'gray'} size="xs">
+                  {r.status.charAt(0).toUpperCase() + r.status.slice(1)}
+                </Badge>
+              )}
+              emptyTitle="No orders yet"
+              emptyText="Create your first sales order."
+            />
+          </div>
+          <div className="hidden sm:block">
+            <AdvancedTable<SaleOrder>
+              columns={COLUMNS}
+              data={data ?? []}
+              rowKey="id"
+              rowActions={rowActions}
+              searchPlaceholder="Search orders..."
+              emptyText="No orders found"
+            />
+          </div>
+        </div>
       </div>
 
       <Modal

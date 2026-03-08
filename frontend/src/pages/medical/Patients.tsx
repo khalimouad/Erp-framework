@@ -8,6 +8,7 @@ import { Button }        from '@/components/ui/Button'
 import { Badge }         from '@/components/ui/Badge'
 import { FormView }      from '@/components/form/FormView'
 import { medicalApi }    from '@/api/client'
+import { ResponsiveTable } from '@/components/views/ResponsiveTable'
 import type { Patient }  from '@/types'
 import type { ColumnDef, RowAction, FormFieldDef } from '@/types/ui'
 
@@ -96,15 +97,48 @@ export default function Patients() {
       }]}
       loading={isLoading}
     >
-      <div className="p-6">
-        <AdvancedTable<Patient>
-          columns={COLUMNS}
-          data={data ?? []}
-          rowKey="id"
-          rowActions={rowActions}
-          searchPlaceholder="Search patients..."
-          emptyText="No patients found"
-        />
+      <div className="p-4 sm:p-6">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="sm:hidden">
+            <ResponsiveTable<Patient>
+              columns={[
+                {
+                  key: 'name',
+                  label: 'Patient',
+                  render: r => (
+                    <div>
+                      <div className="font-medium">{r.first_name} {r.last_name}</div>
+                      <div className="text-xs text-gray-400">{r.patient_code}</div>
+                    </div>
+                  ),
+                },
+                { key: 'phone', label: 'Phone' },
+              ]}
+              data={data ?? []}
+              rowKey="id"
+              loading={isLoading}
+              buildRowActions={(r) => [{ key: 'edit', label: 'Edit', onClick: () => { setEditing(r); setFormData({ ...r }); setOpen(true) } }]}
+              onRowClick={(r) => { setEditing(r); setFormData({ ...r }); setOpen(true) }}
+              mobileStatusRender={(r) => (
+                <Badge color={r.is_active ? 'green' : 'gray'} size="xs" dot>
+                  {r.is_active ? 'Active' : 'Inactive'}
+                </Badge>
+              )}
+              emptyTitle="No patients yet"
+              emptyText="Register your first patient."
+            />
+          </div>
+          <div className="hidden sm:block">
+            <AdvancedTable<Patient>
+              columns={COLUMNS}
+              data={data ?? []}
+              rowKey="id"
+              rowActions={rowActions}
+              searchPlaceholder="Search patients..."
+              emptyText="No patients found"
+            />
+          </div>
+        </div>
       </div>
 
       <Modal

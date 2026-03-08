@@ -9,6 +9,7 @@ import { Button }        from '@/components/ui/Button'
 import { Badge }         from '@/components/ui/Badge'
 import { FormView }      from '@/components/form/FormView'
 import { companiesApi }  from '@/api/client'
+import { ResponsiveTable } from '@/components/views/ResponsiveTable'
 import type { Company }  from '@/types'
 import type { ColumnDef, RowAction, FormFieldDef } from '@/types/ui'
 
@@ -48,7 +49,8 @@ export default function Companies() {
   })
 
   const saveMutation = useMutation({
-    mutationFn: (d: Record<string, unknown>) => companiesApi.create(d),
+    mutationFn: (d: Record<string, unknown>) =>
+      editing ? companiesApi.update(editing.id, d) : companiesApi.create(d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['companies'] }); setOpen(false); setEditing(null) },
   })
 
@@ -64,12 +66,36 @@ export default function Companies() {
         onClick: () => { setEditing(null); setFormData({ currency: 'USD', is_active: true }); setOpen(true) } }]}
       loading={isLoading}
     >
-      <div className="p-6">
-        <AdvancedTable<Company>
-          columns={COLUMNS} data={data ?? []} rowKey="id"
-          rowActions={rowActions} searchPlaceholder="Search companies…"
-          emptyText="No companies yet"
-        />
+      <div className="p-4 sm:p-6">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="sm:hidden">
+            <ResponsiveTable<Company>
+              columns={[
+                { key: 'name',    label: 'Company' },
+                { key: 'country', label: 'Country' },
+              ]}
+              data={data ?? []}
+              rowKey="id"
+              loading={isLoading}
+              buildRowActions={(r) => [{ key: 'edit', label: 'Edit', onClick: () => { setEditing(r); setFormData({ ...r }); setOpen(true) } }]}
+              onRowClick={(r) => { setEditing(r); setFormData({ ...r }); setOpen(true) }}
+              mobileStatusRender={(r) => (
+                <Badge color={r.is_active ? 'green' : 'gray'} size="xs" dot>
+                  {r.is_active ? 'Active' : 'Inactive'}
+                </Badge>
+              )}
+              emptyTitle="No companies yet"
+              emptyText="Add your first company."
+            />
+          </div>
+          <div className="hidden sm:block">
+            <AdvancedTable<Company>
+              columns={COLUMNS} data={data ?? []} rowKey="id"
+              rowActions={rowActions} searchPlaceholder="Search companies…"
+              emptyText="No companies yet"
+            />
+          </div>
+        </div>
       </div>
 
       <Modal

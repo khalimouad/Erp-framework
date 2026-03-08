@@ -8,7 +8,8 @@ import { Button }        from '@/components/ui/Button'
 import { Badge }         from '@/components/ui/Badge'
 import { FormView }      from '@/components/form/FormView'
 import { LinesTable }    from '@/components/form/LinesTable'
-import { purchasingApi } from '@/api/client'
+import { purchasingApi }  from '@/api/client'
+import { ResponsiveTable } from '@/components/views/ResponsiveTable'
 import type { PurchaseOrder } from '@/types'
 import type { ColumnDef, RowAction, FormFieldDef, LineColumnDef } from '@/types/ui'
 
@@ -106,15 +107,39 @@ export default function PurchaseOrders() {
       }]}
       loading={isLoading}
     >
-      <div className="p-6">
-        <AdvancedTable<PurchaseOrder>
-          columns={COLUMNS}
-          data={data ?? []}
-          rowKey="id"
-          rowActions={rowActions}
-          searchPlaceholder="Search purchase orders..."
-          emptyText="No purchase orders found"
-        />
+      <div className="p-4 sm:p-6">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="sm:hidden">
+            <ResponsiveTable<PurchaseOrder>
+              columns={[
+                { key: 'reference',   label: 'Reference' },
+                { key: 'vendor_name', label: 'Vendor' },
+              ]}
+              data={data ?? []}
+              rowKey="id"
+              loading={isLoading}
+              buildRowActions={(r) => [{ key: 'edit', label: 'Edit', onClick: () => rowActions[0].onClick(r) }]}
+              onRowClick={(r) => rowActions[0].onClick(r)}
+              mobileStatusRender={(r) => (
+                <Badge color={STATUS_COLOR[r.status] ?? 'gray'} size="xs">
+                  {r.status.charAt(0).toUpperCase() + r.status.slice(1)}
+                </Badge>
+              )}
+              emptyTitle="No purchase orders yet"
+              emptyText="Create your first purchase order."
+            />
+          </div>
+          <div className="hidden sm:block">
+            <AdvancedTable<PurchaseOrder>
+              columns={COLUMNS}
+              data={data ?? []}
+              rowKey="id"
+              rowActions={rowActions}
+              searchPlaceholder="Search purchase orders..."
+              emptyText="No purchase orders found"
+            />
+          </div>
+        </div>
       </div>
 
       <Modal

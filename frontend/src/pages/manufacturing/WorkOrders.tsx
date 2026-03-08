@@ -8,7 +8,8 @@ import { Button }          from '@/components/ui/Button'
 import { Badge }           from '@/components/ui/Badge'
 import { FormView }        from '@/components/form/FormView'
 import { manufacturingApi } from '@/api/client'
-import type { WorkOrder }  from '@/types'
+import { ResponsiveTable }  from '@/components/views/ResponsiveTable'
+import type { WorkOrder }   from '@/types'
 import type { ColumnDef, RowAction, FormFieldDef } from '@/types/ui'
 
 const STATUS_COLOR: Record<string, string> = {
@@ -82,15 +83,39 @@ export default function WorkOrders() {
       }]}
       loading={isLoading}
     >
-      <div className="p-6">
-        <AdvancedTable<WorkOrder>
-          columns={COLUMNS}
-          data={data ?? []}
-          rowKey="id"
-          rowActions={rowActions}
-          searchPlaceholder="Search work orders..."
-          emptyText="No work orders found"
-        />
+      <div className="p-4 sm:p-6">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="sm:hidden">
+            <ResponsiveTable<WorkOrder>
+              columns={[
+                { key: 'reference',        label: 'Reference' },
+                { key: 'quantity_planned', label: 'Planned Qty', render: r => String(r.quantity_planned) },
+              ]}
+              data={data ?? []}
+              rowKey="id"
+              loading={isLoading}
+              buildRowActions={(r) => [{ key: 'edit', label: 'Edit', onClick: () => { setEditing(r); setFormData({ ...r }); setOpen(true) } }]}
+              onRowClick={(r) => { setEditing(r); setFormData({ ...r }); setOpen(true) }}
+              mobileStatusRender={(r) => (
+                <Badge color={STATUS_COLOR[r.status] ?? 'gray'} size="xs">
+                  {r.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                </Badge>
+              )}
+              emptyTitle="No work orders yet"
+              emptyText="Create your first work order."
+            />
+          </div>
+          <div className="hidden sm:block">
+            <AdvancedTable<WorkOrder>
+              columns={COLUMNS}
+              data={data ?? []}
+              rowKey="id"
+              rowActions={rowActions}
+              searchPlaceholder="Search work orders..."
+              emptyText="No work orders found"
+            />
+          </div>
+        </div>
       </div>
 
       <Modal

@@ -8,6 +8,7 @@ import { Button }         from '@/components/ui/Button'
 import { Badge }          from '@/components/ui/Badge'
 import { FormView }       from '@/components/form/FormView'
 import { medicalApi }     from '@/api/client'
+import { ResponsiveTable } from '@/components/views/ResponsiveTable'
 import type { Appointment } from '@/types'
 import type { ColumnDef, RowAction, FormFieldDef } from '@/types/ui'
 
@@ -98,15 +99,48 @@ export default function Appointments() {
       }]}
       loading={isLoading}
     >
-      <div className="p-6">
-        <AdvancedTable<Appointment>
-          columns={COLUMNS}
-          data={data ?? []}
-          rowKey="id"
-          rowActions={rowActions}
-          searchPlaceholder="Search appointments..."
-          emptyText="No appointments found"
-        />
+      <div className="p-4 sm:p-6">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="sm:hidden">
+            <ResponsiveTable<Appointment>
+              columns={[
+                {
+                  key: 'appointment_type',
+                  label: 'Appointment',
+                  render: r => (
+                    <div>
+                      <div className="font-medium capitalize">{r.appointment_type ?? 'Consultation'}</div>
+                      <div className="text-xs text-gray-400">Patient #{r.patient_id}</div>
+                    </div>
+                  ),
+                },
+                { key: 'appointment_date', label: 'Date', render: r => new Date(r.appointment_date).toLocaleDateString() },
+              ]}
+              data={data ?? []}
+              rowKey="id"
+              loading={isLoading}
+              buildRowActions={(r) => [{ key: 'edit', label: 'Edit', onClick: () => { setEditing(r); setFormData({ ...r }); setOpen(true) } }]}
+              onRowClick={(r) => { setEditing(r); setFormData({ ...r }); setOpen(true) }}
+              mobileStatusRender={(r) => (
+                <Badge color={STATUS_COLOR[r.status] ?? 'gray'} size="xs">
+                  {r.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                </Badge>
+              )}
+              emptyTitle="No appointments yet"
+              emptyText="Schedule your first appointment."
+            />
+          </div>
+          <div className="hidden sm:block">
+            <AdvancedTable<Appointment>
+              columns={COLUMNS}
+              data={data ?? []}
+              rowKey="id"
+              rowActions={rowActions}
+              searchPlaceholder="Search appointments..."
+              emptyText="No appointments found"
+            />
+          </div>
+        </div>
       </div>
 
       <Modal

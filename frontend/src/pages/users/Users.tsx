@@ -15,6 +15,7 @@ import clsx from 'clsx'
 
 import { PageTemplate }    from '@/components/layout/PageTemplate'
 import { AdvancedTable }   from '@/components/table/AdvancedTable'
+import { ResponsiveTable } from '@/components/views/ResponsiveTable'
 import { Modal }           from '@/components/ui/Modal'
 import { Badge }           from '@/components/ui/Badge'
 import { Button }          from '@/components/ui/Button'
@@ -305,15 +306,59 @@ export default function Users() {
       actions={actions}
       loading={isLoading}
     >
-      <div className="p-6">
-        <AdvancedTable<AppUser>
-          columns={COLUMNS}
-          data={users}
-          rowKey="id"
-          rowActions={rowActions}
-          searchPlaceholder="Search users…"
-          emptyText="No users found"
-        />
+      <div className="p-4 sm:p-6">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="sm:hidden">
+            <ResponsiveTable<AppUser>
+              columns={[
+                {
+                  key: 'full_name',
+                  label: 'User',
+                  render: r => (
+                    <div>
+                      <div className="font-medium flex items-center gap-1">
+                        {r.full_name}
+                        {r.is_superadmin && <ShieldCheck size={12} className="text-purple-500" />}
+                      </div>
+                      <div className="text-xs text-gray-400">{r.email}</div>
+                    </div>
+                  ),
+                },
+              ]}
+              data={users}
+              rowKey="id"
+              loading={isLoading}
+              buildRowActions={(r) => [
+                { key: 'roles', label: 'Manage Roles', onClick: () => setRolesUser(r) },
+                { key: 'edit',  label: 'Edit',         onClick: () => { setEditUser(r); setFormData({ ...r }) } },
+                {
+                  key: 'deactivate',
+                  label: r.is_active ? 'Deactivate' : 'Activate',
+                  variant: 'danger' as const,
+                  separator: true,
+                  onClick: () => updateMutation.mutate({ id: r.id, d: { is_active: !r.is_active } }),
+                },
+              ]}
+              mobileStatusRender={(r) => (
+                <Badge color={r.is_active ? 'green' : 'gray'} size="xs" dot>
+                  {r.is_active ? 'Active' : 'Inactive'}
+                </Badge>
+              )}
+              emptyTitle="No users yet"
+              emptyText="Create your first user."
+            />
+          </div>
+          <div className="hidden sm:block">
+            <AdvancedTable<AppUser>
+              columns={COLUMNS}
+              data={users}
+              rowKey="id"
+              rowActions={rowActions}
+              searchPlaceholder="Search users…"
+              emptyText="No users found"
+            />
+          </div>
+        </div>
       </div>
 
       {/* ── Create user modal ─────────────────────────────────────── */}

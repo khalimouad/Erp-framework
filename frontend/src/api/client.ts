@@ -107,6 +107,7 @@ export const medicalApi = {
   updateAppointment: (id: number, data: object) => api.patch(`/medical/appointments/${id}`, data),
   listPharmacy: () => api.get('/medical/pharmacy'),
   createPharmacyItem: (data: object) => api.post('/medical/pharmacy', data),
+  updatePharmacyItem: (id: number, data: object) => api.patch(`/medical/pharmacy/${id}`, data),
   lowStock: () => api.get('/medical/pharmacy/low-stock'),
   createPrescription: (data: object) => api.post('/medical/prescriptions', data),
   createRecord: (data: object) => api.post('/medical/records', data),
@@ -116,6 +117,7 @@ export const medicalApi = {
 export const manufacturingApi = {
   listBoms: () => api.get('/manufacturing/bom'),
   createBom: (data: object) => api.post('/manufacturing/bom', data),
+  updateBom: (id: number, data: object) => api.patch(`/manufacturing/bom/${id}`, data),
   listWorkOrders: (skip = 0, limit = 50) => api.get(`/manufacturing/work-orders?skip=${skip}&limit=${limit}`),
   createWorkOrder: (data: object) => api.post('/manufacturing/work-orders', data),
   updateWorkOrder: (id: number, data: object) => api.patch(`/manufacturing/work-orders/${id}`, data),
@@ -140,6 +142,7 @@ export const accountingApi = {
 export const companiesApi = {
   list: () => api.get('/companies/'),
   create: (data: object) => api.post('/companies/', data),
+  update: (id: number, data: object) => api.patch(`/companies/${id}`, data),
 }
 
 // --- AI Assistant ---

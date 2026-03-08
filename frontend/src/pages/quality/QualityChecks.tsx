@@ -8,21 +8,10 @@ import { Modal }         from '@/components/ui/Modal'
 import { Button }        from '@/components/ui/Button'
 import { Badge }         from '@/components/ui/Badge'
 import { FormView }      from '@/components/form/FormView'
-import { qualityApi }    from '@/api/client'
+import { qualityApi }       from '@/api/client'
+import { ResponsiveTable }  from '@/components/views/ResponsiveTable'
+import type { QualityCheck } from '@/types'
 import type { ColumnDef, RowAction, FormFieldDef, BadgeColor } from '@/types/ui'
-
-interface QualityCheck {
-  id: number
-  reference: string
-  product_id: number | null
-  work_order_id: number | null
-  check_type: string
-  result: 'pass' | 'fail' | 'on_hold' | null
-  notes: string | null
-  checked_by: number | null
-  checked_at: string | null
-  created_at: string
-}
 
 const RESULT_COLOR: Record<string, BadgeColor> = {
   pass: 'green', fail: 'red', on_hold: 'yellow',
@@ -95,12 +84,35 @@ export default function QualityChecks() {
         onClick: () => { setEditing(null); setFormData({}); setOpen(true) } }]}
       loading={isLoading}
     >
-      <div className="p-6">
-        <AdvancedTable<QualityCheck>
-          columns={COLUMNS} data={data ?? []} rowKey="id"
-          rowActions={rowActions} searchPlaceholder="Search quality checks…"
-          emptyText="No quality checks yet"
-        />
+      <div className="p-4 sm:p-6">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="sm:hidden">
+            <ResponsiveTable<QualityCheck>
+              columns={[
+                { key: 'reference',  label: 'Reference' },
+                { key: 'check_type', label: 'Type' },
+              ]}
+              data={data ?? []}
+              rowKey="id"
+              loading={isLoading}
+              buildRowActions={(r) => [{ key: 'edit', label: 'Record Result', onClick: () => { setEditing(r); setFormData({ ...r }); setOpen(true) } }]}
+              onRowClick={(r) => { setEditing(r); setFormData({ ...r }); setOpen(true) }}
+              mobileStatusRender={(r) => r.result
+                ? <Badge color={RESULT_COLOR[r.result] ?? 'gray'} size="xs" dot>{r.result.replace('_', ' ')}</Badge>
+                : <span className="text-xs text-gray-400 italic">Pending</span>
+              }
+              emptyTitle="No quality checks yet"
+              emptyText="Create your first quality check."
+            />
+          </div>
+          <div className="hidden sm:block">
+            <AdvancedTable<QualityCheck>
+              columns={COLUMNS} data={data ?? []} rowKey="id"
+              rowActions={rowActions} searchPlaceholder="Search quality checks…"
+              emptyText="No quality checks yet"
+            />
+          </div>
+        </div>
       </div>
 
       <Modal

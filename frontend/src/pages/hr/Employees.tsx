@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
-import { PageTemplate }  from '@/components/layout/PageTemplate'
-import { AdvancedTable } from '@/components/table/AdvancedTable'
-import { Modal }         from '@/components/ui/Modal'
-import { Button }        from '@/components/ui/Button'
-import { Badge }         from '@/components/ui/Badge'
-import { FormView }      from '@/components/form/FormView'
-import { hrApi }         from '@/api/client'
-import type { Employee } from '@/types'
+import { PageTemplate }    from '@/components/layout/PageTemplate'
+import { AdvancedTable }   from '@/components/table/AdvancedTable'
+import { ResponsiveTable } from '@/components/views/ResponsiveTable'
+import { Modal }           from '@/components/ui/Modal'
+import { Button }          from '@/components/ui/Button'
+import { Badge }           from '@/components/ui/Badge'
+import { FormView }        from '@/components/form/FormView'
+import { hrApi }           from '@/api/client'
+import type { Employee }   from '@/types'
 import type { ColumnDef, RowAction, FormFieldDef } from '@/types/ui'
 
 const COLUMNS: ColumnDef<Employee>[] = [
@@ -61,11 +62,25 @@ export default function Employees() {
     },
   })
 
+  const toggleActiveMutation = useMutation({
+    mutationFn: (r: Employee) => hrApi.updateEmployee(r.id, { is_active: !r.is_active }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['employees'] }),
+  })
+
+  const openEdit = (r: Employee) => { setEditing(r); setFormData({ ...r }); setOpen(true) }
+
   const rowActions: RowAction<Employee>[] = [
     {
       key: 'edit',
       label: 'Edit',
-      onClick: (r) => { setEditing(r); setFormData({ ...r }); setOpen(true) },
+      onClick: openEdit,
+    },
+    {
+      key: 'deactivate',
+      label: (r) => r.is_active ? 'Deactivate' : 'Activate',
+      variant: 'danger',
+      separator: true,
+      onClick: (r) => toggleActiveMutation.mutate(r),
     },
   ]
 
@@ -82,15 +97,57 @@ export default function Employees() {
       }]}
       loading={isLoading}
     >
-      <div className="p-6">
-        <AdvancedTable<Employee>
-          columns={COLUMNS}
-          data={data ?? []}
-          rowKey="id"
-          rowActions={rowActions}
-          searchPlaceholder="Search employees..."
-          emptyText="No employees found"
-        />
+      <div className="p-4 sm:p-6">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="sm:hidden">
+            <ResponsiveTable<Employee>
+              columns={[
+                {
+                  key: 'name',
+                  label: 'Employee',
+                  render: r => (
+                    <div>
+                      <div className="font-medium">{r.first_name} {r.last_name}</div>
+                      <div className="text-xs text-gray-400">{r.job_title ?? 'No title'}</div>
+                    </div>
+                  ),
+                },
+                { key: 'work_email', label: 'Email' },
+              ]}
+              data={data ?? []}
+              rowKey="id"
+              loading={isLoading}
+              buildRowActions={(r) => [
+                { key: 'edit', label: 'Edit', onClick: () => openEdit(r) },
+                {
+                  key: 'deactivate',
+                  label: r.is_active ? 'Deactivate' : 'Activate',
+                  variant: 'danger' as const,
+                  separator: true,
+                  onClick: () => toggleActiveMutation.mutate(r),
+                },
+              ]}
+              onRowClick={openEdit}
+              mobileStatusRender={(r) => (
+                <Badge color={r.is_active ? 'green' : 'gray'} size="xs" dot>
+                  {r.is_active ? 'Active' : 'Inactive'}
+                </Badge>
+              )}
+              emptyTitle="No employees yet"
+              emptyText="Add your first employee to get started."
+            />
+          </div>
+          <div className="hidden sm:block">
+            <AdvancedTable<Employee>
+              columns={COLUMNS}
+              data={data ?? []}
+              rowKey="id"
+              rowActions={rowActions}
+              searchPlaceholder="Search employees..."
+              emptyText="No employees found"
+            />
+          </div>
+        </div>
       </div>
 
       <Modal

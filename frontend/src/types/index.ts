@@ -152,6 +152,20 @@ export interface BOM {
   created_at: string
 }
 
+// Quality
+export interface QualityCheck {
+  id: number
+  reference: string
+  product_id: number | null
+  work_order_id: number | null
+  check_type: string
+  result: 'pass' | 'fail' | 'on_hold' | null
+  notes: string | null
+  checked_by: number | null
+  checked_at: string | null
+  created_at: string
+}
+
 // Accounting
 export interface Invoice {
   id: number

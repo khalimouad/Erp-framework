@@ -7,6 +7,7 @@ import { Modal }         from '@/components/ui/Modal'
 import { Button }        from '@/components/ui/Button'
 import { FormView }      from '@/components/form/FormView'
 import { medicalApi }    from '@/api/client'
+import { ResponsiveTable } from '@/components/views/ResponsiveTable'
 import type { PharmacyItem } from '@/types'
 import type { ColumnDef, RowAction, FormFieldDef } from '@/types/ui'
 
@@ -111,14 +112,50 @@ export default function Pharmacy() {
           </div>
         )}
 
-        <AdvancedTable<PharmacyItem>
-          columns={COLUMNS}
-          data={data ?? []}
-          rowKey="id"
-          rowActions={rowActions}
-          searchPlaceholder="Search drugs..."
-          emptyText="No pharmacy items found"
-        />
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="sm:hidden">
+            <ResponsiveTable<PharmacyItem>
+              columns={[
+                {
+                  key: 'drug_name',
+                  label: 'Drug',
+                  render: r => (
+                    <div>
+                      <div className="font-medium">{r.drug_name}</div>
+                      <div className="text-xs text-gray-400">{r.dosage_form} {r.strength}</div>
+                    </div>
+                  ),
+                },
+                {
+                  key: 'quantity_on_hand',
+                  label: 'In Stock',
+                  render: r => (
+                    <span className={r.quantity_on_hand <= r.reorder_level ? 'text-red-600 font-medium' : ''}>
+                      {r.quantity_on_hand}
+                    </span>
+                  ),
+                },
+              ]}
+              data={data ?? []}
+              rowKey="id"
+              loading={isLoading}
+              buildRowActions={(r) => [{ key: 'edit', label: 'Edit', onClick: () => { setEditing(r); setFormData({ ...r }); setOpen(true) } }]}
+              onRowClick={(r) => { setEditing(r); setFormData({ ...r }); setOpen(true) }}
+              emptyTitle="No drugs yet"
+              emptyText="Add your first pharmacy item."
+            />
+          </div>
+          <div className="hidden sm:block">
+            <AdvancedTable<PharmacyItem>
+              columns={COLUMNS}
+              data={data ?? []}
+              rowKey="id"
+              rowActions={rowActions}
+              searchPlaceholder="Search drugs..."
+              emptyText="No pharmacy items found"
+            />
+          </div>
+        </div>
       </div>
 
       <Modal

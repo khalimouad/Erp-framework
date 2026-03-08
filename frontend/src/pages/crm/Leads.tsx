@@ -155,7 +155,7 @@ export default function Leads() {
     { key: 'bulk_won',    label: 'Mark Won',   icon: <CheckCircle size={14} />,
       onClick: rows => rows.forEach(r => updateMutation.mutate({ id: r.id, d: { status: 'won' } })) },
     { key: 'bulk_arch',   label: 'Archive',    icon: <Archive size={14} />,
-      onClick: rows => console.log('archive', rows.length) },
+      onClick: rows => { if (confirm(`Archive ${rows.length} lead(s)? They will be marked as lost.`)) rows.forEach(r => updateMutation.mutate({ id: r.id, d: { status: 'lost' } })) } },
     { key: 'bulk_delete', label: 'Delete',     icon: <Trash2 size={14} />, variant: 'danger' as const,
       onClick: rows => { if (confirm(`Delete ${rows.length} lead(s)?`)) rows.forEach(r => deleteMutation.mutate(r.id)) } },
   ]

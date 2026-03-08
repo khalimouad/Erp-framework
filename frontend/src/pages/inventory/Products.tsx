@@ -1,94 +1,152 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
-import Header from '@/components/Layout/Header'
-import DataTable from '@/components/common/DataTable'
-import { inventoryApi } from '@/api/client'
-import type { Product } from '@/types'
+import { PageTemplate }    from '@/components/layout/PageTemplate'
+import { AdvancedTable }   from '@/components/table/AdvancedTable'
+import { ResponsiveTable } from '@/components/views/ResponsiveTable'
+import { Modal }           from '@/components/ui/Modal'
+import { Button }          from '@/components/ui/Button'
+import { Badge }           from '@/components/ui/Badge'
+import { FormView }        from '@/components/form/FormView'
+import { inventoryApi }   from '@/api/client'
+import type { Product }    from '@/types'
+import type { ColumnDef, RowAction, FormFieldDef } from '@/types/ui'
+
+const COLUMNS: ColumnDef<Product>[] = [
+  { key: 'sku',             label: 'SKU',          searchable: true },
+  { key: 'name',            label: 'Product Name', searchable: true, sortable: true },
+  { key: 'unit_of_measure', label: 'UOM' },
+  { key: 'unit_price',      label: 'Sale Price',   type: 'currency', sortable: true, align: 'right' },
+  { key: 'cost_price',      label: 'Cost',         type: 'currency', sortable: true, align: 'right' },
+  {
+    key: 'is_active',
+    label: 'Status',
+    render: (row: Product) => (
+      <Badge color={row.is_active ? 'green' : 'gray'} dot>
+        {row.is_active ? 'Active' : 'Inactive'}
+      </Badge>
+    ),
+  },
+]
+
+const FIELDS: FormFieldDef[] = [
+  { key: 'sku',             label: 'SKU',             type: 'text',     required: true },
+  { key: 'name',            label: 'Product Name',    type: 'text',     required: true },
+  { key: 'unit_of_measure', label: 'Unit of Measure', type: 'text',     placeholder: 'unit, kg, l…' },
+  { key: 'unit_price',      label: 'Sale Price',      type: 'currency' },
+  { key: 'cost_price',      label: 'Cost Price',      type: 'currency' },
+  { key: 'description',     label: 'Description',     type: 'textarea', span: 2 },
+  { key: 'is_active',       label: 'Active',          type: 'boolean' },
+]
 
 export default function Products() {
   const qc = useQueryClient()
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ sku: '', name: '', unit_price: 0, cost_price: 0, unit_of_measure: 'unit' })
+  const [open,     setOpen]     = useState(false)
+  const [editing,  setEditing]  = useState<Product | null>(null)
+  const [formData, setFormData] = useState<Record<string, unknown>>({})
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading } = useQuery<Product[]>({
     queryKey: ['products'],
-    queryFn: () => inventoryApi.listProducts(),
+    queryFn: () => inventoryApi.listProducts().then(r => r.data),
   })
 
-  const createMutation = useMutation({
-    mutationFn: () => inventoryApi.createProduct(form),
+  const saveMutation = useMutation({
+    mutationFn: (d: Record<string, unknown>) =>
+      editing ? inventoryApi.updateProduct(editing.id, d) : inventoryApi.createProduct(d),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['products'] })
-      setShowForm(false)
-      setForm({ sku: '', name: '', unit_price: 0, cost_price: 0, unit_of_measure: 'unit' })
+      setOpen(false)
+      setEditing(null)
     },
   })
 
-  const columns = [
-    { key: 'sku', label: 'SKU' },
-    { key: 'name', label: 'Product Name' },
-    { key: 'unit_of_measure', label: 'UOM' },
-    { key: 'unit_price', label: 'Sale Price', render: (row: Product) => `$${row.unit_price.toFixed(2)}` },
-    { key: 'cost_price', label: 'Cost', render: (row: Product) => `$${row.cost_price.toFixed(2)}` },
+  const rowActions: RowAction<Product>[] = [
     {
-      key: 'is_active',
-      label: 'Status',
-      render: (row: Product) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${row.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-          {row.is_active ? 'Active' : 'Inactive'}
-        </span>
-      ),
+      key: 'edit',
+      label: 'Edit',
+      onClick: (r) => { setEditing(r); setFormData({ ...r }); setOpen(true) },
     },
   ]
 
+  const openEdit = (r: Product) => { setEditing(r); setFormData({ ...r }); setOpen(true) }
+
   return (
-    <div>
-      <Header title="Inventory — Products" />
-      <div className="p-6 space-y-4">
-        <div className="flex justify-between items-center">
-          <p className="text-gray-500 text-sm">{data?.data?.length ?? 0} products</p>
-          <button className="btn-primary" onClick={() => setShowForm(true)}>
-            <Plus size={16} /> New Product
-          </button>
-        </div>
-
-        {showForm && (
-          <div className="card p-6 space-y-4">
-            <h3 className="font-semibold">New Product</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="label">SKU *</label>
-                <input className="input" value={form.sku} onChange={e => setForm({ ...form, sku: e.target.value })} />
-              </div>
-              <div>
-                <label className="label">Name *</label>
-                <input className="input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-              </div>
-              <div>
-                <label className="label">Sale Price</label>
-                <input className="input" type="number" value={form.unit_price} onChange={e => setForm({ ...form, unit_price: Number(e.target.value) })} />
-              </div>
-              <div>
-                <label className="label">Cost Price</label>
-                <input className="input" type="number" value={form.cost_price} onChange={e => setForm({ ...form, cost_price: Number(e.target.value) })} />
-              </div>
-              <div>
-                <label className="label">Unit of Measure</label>
-                <input className="input" value={form.unit_of_measure} onChange={e => setForm({ ...form, unit_of_measure: e.target.value })} />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button className="btn-primary" onClick={() => createMutation.mutate()} disabled={!form.sku || !form.name}>Save</button>
-              <button className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
-            </div>
+    <PageTemplate
+      title="Products"
+      breadcrumbs={[{ label: 'Inventory' }, { label: 'Products' }]}
+      actions={[{
+        key: 'new',
+        label: 'New Product',
+        icon: <Plus size={14} />,
+        variant: 'primary',
+        onClick: () => { setEditing(null); setFormData({ is_active: true }); setOpen(true) },
+      }]}
+      loading={isLoading}
+    >
+      <div className="p-4 sm:p-6">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="sm:hidden">
+            <ResponsiveTable<Product>
+              columns={[
+                {
+                  key: 'name',
+                  label: 'Product',
+                  render: r => (
+                    <div>
+                      <div className="font-medium">{r.name}</div>
+                      <div className="text-xs text-gray-400">{r.sku}</div>
+                    </div>
+                  ),
+                },
+                { key: 'unit_price', label: 'Price', render: r => `$${r.unit_price.toFixed(2)}` },
+              ]}
+              data={data ?? []}
+              rowKey="id"
+              loading={isLoading}
+              buildRowActions={(r) => [{ key: 'edit', label: 'Edit', onClick: () => openEdit(r) }]}
+              onRowClick={openEdit}
+              mobileStatusRender={(r) => (
+                <Badge color={r.is_active ? 'green' : 'gray'} size="xs" dot>
+                  {r.is_active ? 'Active' : 'Inactive'}
+                </Badge>
+              )}
+              emptyTitle="No products yet"
+              emptyText="Add your first product to get started."
+            />
           </div>
-        )}
-
-        <div className="card">
-          <DataTable<Product> columns={columns} data={data?.data ?? []} loading={isLoading} />
+          <div className="hidden sm:block">
+            <AdvancedTable<Product>
+              columns={COLUMNS}
+              data={data ?? []}
+              rowKey="id"
+              rowActions={rowActions}
+              searchPlaceholder="Search products..."
+              emptyText="No products found"
+            />
+          </div>
         </div>
       </div>
-    </div>
+
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={editing ? `Edit — ${editing.name}` : 'New Product'}
+        size="md"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button
+              variant="primary"
+              loading={saveMutation.isPending}
+              onClick={() => saveMutation.mutate(formData)}
+            >
+              Save
+            </Button>
+          </div>
+        }
+      >
+        <FormView fields={FIELDS} data={formData} onChange={setFormData} readOnly={false} />
+      </Modal>
+    </PageTemplate>
   )
 }
