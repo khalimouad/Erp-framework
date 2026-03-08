@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Users, Building2, Settings, LogOut, ChevronDown, Search } from 'lucide-react'
+import { LayoutDashboard, Users, Building2, Settings, LogOut, ChevronDown, Search, X } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
 import { useVerticalStore } from '@/store/vertical'
 import { VERTICALS } from '@/config/verticals'
@@ -14,9 +14,10 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 
 interface SidebarProps {
   onSearch: () => void
+  onClose?: () => void
 }
 
-export default function Sidebar({ onSearch }: SidebarProps) {
+export default function Sidebar({ onSearch, onClose }: SidebarProps) {
   const { user, logout } = useAuthStore()
   const { vertical, setVertical } = useVerticalStore()
   const [showPicker, setShowPicker] = useState(false)
@@ -24,10 +25,11 @@ export default function Sidebar({ onSearch }: SidebarProps) {
   const config = VERTICALS[vertical]
 
   return (
-    <aside className="w-64 bg-primary-900 text-white flex flex-col min-h-screen">
+    <aside className="w-64 bg-primary-900 text-white flex flex-col h-full min-h-screen">
       {/* Logo + Vertical selector */}
-      <div className="p-5 border-b border-primary-700">
-        <h1 className="text-xl font-bold tracking-tight">NextERP</h1>
+      <div className="p-5 border-b border-primary-700 flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold tracking-tight">NextERP</h1>
         <button
           onClick={() => setShowPicker(!showPicker)}
           className="mt-2 flex items-center gap-1 text-xs hover:text-white transition-colors"
@@ -37,6 +39,16 @@ export default function Sidebar({ onSearch }: SidebarProps) {
           </span>
           <ChevronDown size={12} className="text-primary-400" />
         </button>
+        </div>
+        {/* Close button — mobile only */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="md:hidden p-1.5 -mr-1 -mt-1 rounded-lg text-primary-400 hover:text-white hover:bg-primary-800 transition-colors shrink-0"
+          >
+            <X size={18} />
+          </button>
+        )}
       </div>
 
       {/* Vertical picker */}
