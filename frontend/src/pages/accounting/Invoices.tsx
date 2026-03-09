@@ -8,6 +8,7 @@ import { Modal }         from '@/components/ui/Modal'
 import { Button }        from '@/components/ui/Button'
 import { Badge }         from '@/components/ui/Badge'
 import { FormView }      from '@/components/form/FormView'
+import { useEditForm }   from '@/hooks/useEditForm'
 import { accountingApi }  from '@/api/client'
 import { ResponsiveTable } from '@/components/views/ResponsiveTable'
 import type { Invoice }    from '@/types'
@@ -67,8 +68,7 @@ const PAYMENT_FIELDS: FormFieldDef[] = [
 
 export default function Invoices() {
   const qc = useQueryClient()
-  const [open, setOpen] = useState(false)
-  const [formData, setFormData] = useState<Record<string, unknown>>({})
+  const { open, formData, setFormData, openNew, close } = useEditForm<Invoice>()
 
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -83,7 +83,7 @@ export default function Invoices() {
     mutationFn: (d: Record<string, unknown>) => accountingApi.createInvoice(d),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['invoices'] })
-      setOpen(false)
+      close()
     },
   })
 
@@ -116,7 +116,7 @@ export default function Invoices() {
         label: 'New Invoice',
         icon: <Plus size={14} />,
         variant: 'primary',
-        onClick: () => { setFormData({}); setOpen(true) },
+        onClick: openNew,
       }]}
       loading={isLoading}
     >
@@ -164,12 +164,12 @@ export default function Invoices() {
 
       <Modal
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={close}
         title="New Invoice"
         size="md"
         footer={
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button variant="ghost" onClick={close}>Cancel</Button>
             <Button
               variant="primary"
               loading={createMutation.isPending}

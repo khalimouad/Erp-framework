@@ -19,6 +19,7 @@ import { ResponsiveTable } from '@/components/views/ResponsiveTable'
 import { TableCard }       from '@/components/views/TableCard'
 import { Modal }           from '@/components/ui/Modal'
 import { Badge }           from '@/components/ui/Badge'
+import { StatusBadge }     from '@/components/ui/StatusBadge'
 import { Button }          from '@/components/ui/Button'
 import { FormView }        from '@/components/form/FormView'
 import { usersApi, baseApi } from '@/api/client'
@@ -92,11 +93,7 @@ const COLUMNS: ColumnDef<AppUser>[] = [
       true:  { label: 'Active',   color: 'green' },
       false: { label: 'Inactive', color: 'gray'  },
     },
-    render: (row) => (
-      <Badge color={row.is_active ? 'green' : 'gray'} dot size="sm">
-        {row.is_active ? 'Active' : 'Inactive'}
-      </Badge>
-    ),
+    render: (row) => <StatusBadge active={row.is_active} size="sm" />,
   },
   {
     key: 'ir_user_roles',
@@ -339,11 +336,7 @@ export default function Users() {
                 onClick: () => updateMutation.mutate({ id: r.id, d: { is_active: !r.is_active } }),
               },
             ]}
-            mobileStatusRender={(r) => (
-              <Badge color={r.is_active ? 'green' : 'gray'} size="xs" dot>
-                {r.is_active ? 'Active' : 'Inactive'}
-              </Badge>
-            )}
+            mobileStatusRender={(r) => <StatusBadge active={r.is_active} />}
             emptyTitle="No users yet"
             emptyText="Create your first user."
           />
