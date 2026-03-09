@@ -3,6 +3,7 @@ import AppLayout from '@/components/Layout/AppLayout'
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import Settings from '@/pages/Settings'
+import ModulesPage from '@/pages/settings/Modules'
 
 // Base
 import Users from '@/pages/users/Users'
@@ -41,6 +42,7 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/settings/modules" element={<ModulesPage />} />
 
           {/* CRM */}
           <Route path="/crm" element={<Leads />} />

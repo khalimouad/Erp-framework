@@ -256,11 +256,25 @@ async def get_module(db: AsyncSession, name: str) -> IrModule:
 
 
 async def install_module(db: AsyncSession, name: str) -> IrModule:
+    from fastapi import HTTPException
+    from app.core.module_loader import mark_installed
     mod = await get_module(db, name)
+    if mod.state == "installed":
+        return mod
+    # Validate all declared dependencies are already installed
+    for dep in (mod.depends or []):
+        dep_result = await db.execute(select(IrModule).where(IrModule.name == dep))
+        dep_mod = dep_result.scalar_one_or_none()
+        if not dep_mod or dep_mod.state != "installed":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot install '{name}': dependency '{dep}' is not installed yet.",
+            )
     mod.state = "installed"
     mod.installed_at = datetime.now(timezone.utc)
     await db.flush()
     await db.refresh(mod)
+    mark_installed(name)
     return mod
 
 
@@ -291,14 +305,27 @@ async def get_role(db: AsyncSession, role_id: int) -> IrRole:
 
 async def uninstall_module(db: AsyncSession, name: str) -> IrModule:
     from fastapi import HTTPException
+    from app.core.module_loader import mark_uninstalled
     mod = await get_module(db, name)
     if mod.auto_install:
         raise HTTPException(
             status_code=400,
             detail=f"Module '{name}' is a core module and cannot be uninstalled.",
         )
+    # Check no installed module depends on this one
+    all_mods = await list_modules(db)
+    dependents = [
+        m.name for m in all_mods
+        if m.state == "installed" and name in (m.depends or [])
+    ]
+    if dependents:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot uninstall '{name}': module(s) {dependents} depend on it.",
+        )
     mod.state = "uninstalled"
     mod.installed_at = None
     await db.flush()
     await db.refresh(mod)
+    mark_uninstalled(name)
     return mod

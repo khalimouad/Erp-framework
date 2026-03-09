@@ -1,7 +1,9 @@
+import { useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Users, Building2, Settings, LogOut, ChevronDown, Search, X } from 'lucide-react'
+import { LayoutDashboard, Users, Building2, Settings, LogOut, ChevronDown, Search, X, Puzzle } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
 import { useVerticalStore } from '@/store/vertical'
+import { useModulesStore } from '@/store/modules'
 import { VERTICALS } from '@/config/verticals'
 import clsx from 'clsx'
 import { useState } from 'react'
@@ -20,9 +22,20 @@ interface SidebarProps {
 export default function Sidebar({ onSearch, onClose }: SidebarProps) {
   const { user, logout } = useAuthStore()
   const { vertical, setVertical } = useVerticalStore()
+  const { isInstalled, fetchModules, modules } = useModulesStore()
   const [showPicker, setShowPicker] = useState(false)
 
   const config = VERTICALS[vertical]
+
+  // Fetch modules once on mount so nav items reflect install state
+  useEffect(() => {
+    if (modules.length === 0) {
+      fetchModules()
+    }
+  }, [])
+
+  // Only show nav items whose module is installed
+  const visibleNavItems = config.navItems.filter((item) => isInstalled(item.module))
 
   return (
     <aside className="w-64 bg-primary-900 text-white flex flex-col h-full min-h-screen">
@@ -93,14 +106,18 @@ export default function Sidebar({ onSearch, onClose }: SidebarProps) {
           <LayoutDashboard size={16} /> Dashboard
         </NavLink>
 
-        <p className="px-3 pt-3 pb-1 text-xs font-semibold text-primary-500 uppercase tracking-wider">
-          {config.label}
-        </p>
-        {config.navItems.map(({ to, label }) => (
-          <NavLink key={to} to={to} className={navLinkClass}>
-            {label}
-          </NavLink>
-        ))}
+        {visibleNavItems.length > 0 && (
+          <>
+            <p className="px-3 pt-3 pb-1 text-xs font-semibold text-primary-500 uppercase tracking-wider">
+              {config.label}
+            </p>
+            {visibleNavItems.map(({ to, label }) => (
+              <NavLink key={to} to={to} className={navLinkClass}>
+                {label}
+              </NavLink>
+            ))}
+          </>
+        )}
 
         <p className="px-3 pt-3 pb-1 text-xs font-semibold text-primary-500 uppercase tracking-wider">
           Core
@@ -110,6 +127,9 @@ export default function Sidebar({ onSearch, onClose }: SidebarProps) {
         </NavLink>
         <NavLink to="/users" className={navLinkClass}>
           <Users size={16} /> Users
+        </NavLink>
+        <NavLink to="/settings/modules" className={navLinkClass}>
+          <Puzzle size={16} /> Modules
         </NavLink>
         <NavLink to="/settings" className={navLinkClass}>
           <Settings size={16} /> Settings
