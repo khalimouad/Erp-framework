@@ -153,12 +153,12 @@ export default function Employees() {
 
       <Modal
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={() => { setOpen(false); setEditing(null); setFormData({}) }}
         title={editing ? `Edit — ${editing.first_name} ${editing.last_name}` : 'New Employee'}
         size="md"
         footer={
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button variant="ghost" onClick={() => { setOpen(false); setEditing(null); setFormData({}) }}>Cancel</Button>
             <Button
               variant="primary"
               loading={saveMutation.isPending}

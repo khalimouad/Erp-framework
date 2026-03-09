@@ -7,7 +7,7 @@
  *  Toggle      → archived toggle
  */
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, Pencil, Trash2, Copy, Download, Upload,
@@ -135,7 +135,7 @@ export default function Leads() {
   }
 
   // ── Actions ────────────────────────────────────────────────────────────────
-  const buildRowActions = (r: Lead) => [
+  const buildRowActions = useCallback((r: Lead) => [
     { key: 'edit',      label: 'Edit',          icon: <Pencil size={14} />,      onClick: () => open_('edit', r) },
     { key: 'open',      label: 'Open form',     icon: <TrendingUp size={14} />,  onClick: () => {} },
     { key: 'duplicate', label: 'Duplicate',     icon: <Copy size={14} />,
@@ -149,7 +149,8 @@ export default function Leads() {
       onClick: () => updateMutation.mutate({ id: r.id, d: { status: 'lost' } }) },
     { key: 'delete', label: 'Delete', icon: <Trash2 size={14} />, variant: 'danger' as const, separator: true,
       onClick: () => { if (confirm(`Delete "${r.name}"?`)) deleteMutation.mutate(r.id) } },
-  ]
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [createMutation, updateMutation, deleteMutation, open_])
 
   const bulkActions: BulkAction<Lead>[] = [
     { key: 'bulk_won',    label: 'Mark Won',   icon: <CheckCircle size={14} />,

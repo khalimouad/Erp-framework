@@ -69,17 +69,15 @@ export default function PurchaseOrders() {
     },
   })
 
+  const openEdit = (r: PurchaseOrder) => {
+    setEditing(r)
+    setFormData({ ...r })
+    setLines((r as PurchaseOrder & { lines?: OrderLine[] }).lines ?? [])
+    setOpen(true)
+  }
+
   const rowActions: RowAction<PurchaseOrder>[] = [
-    {
-      key: 'edit',
-      label: 'Edit',
-      onClick: (r) => {
-        setEditing(r)
-        setFormData({ ...r })
-        setLines((r as PurchaseOrder & { lines?: OrderLine[] }).lines ?? [])
-        setOpen(true)
-      },
-    },
+    { key: 'edit', label: 'Edit', onClick: openEdit },
   ]
 
   const computedLines = lines.map(l => ({
@@ -118,8 +116,8 @@ export default function PurchaseOrders() {
               data={data ?? []}
               rowKey="id"
               loading={isLoading}
-              buildRowActions={(r) => [{ key: 'edit', label: 'Edit', onClick: () => rowActions[0].onClick(r) }]}
-              onRowClick={(r) => rowActions[0].onClick(r)}
+              buildRowActions={(r) => [{ key: 'edit', label: 'Edit', onClick: () => openEdit(r) }]}
+              onRowClick={openEdit}
               mobileStatusRender={(r) => (
                 <Badge color={STATUS_COLOR[r.status] ?? 'gray'} size="xs">
                   {r.status.charAt(0).toUpperCase() + r.status.slice(1)}

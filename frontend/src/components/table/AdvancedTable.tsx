@@ -526,13 +526,13 @@ export function AdvancedTable<T extends Record<string, unknown>>({
                       <Skeleton className="h-4 rounded" style={{ width: col.width ?? '80%' }} />
                     </td>
                   ))}
-                  {rowActions.length > 0 && <td />}
+                  {hasRowActions && <td />}
                 </tr>
               ))
             ) : pageRows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={visibleCols.length + 1 + (rowActions.length ? 1 : 0)}
+                  colSpan={visibleCols.length + 1 + (hasRowActions ? 1 : 0)}
                   className="px-6 py-16 text-center"
                 >
                   <div className="text-gray-400">

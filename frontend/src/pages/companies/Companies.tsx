@@ -100,11 +100,11 @@ export default function Companies() {
       </div>
 
       <Modal
-        open={open} onClose={() => setOpen(false)}
+        open={open} onClose={() => { setOpen(false); setEditing(null); setFormData({}) }}
         title={editing ? `Edit — ${editing.name}` : 'New Company'} size="lg"
         footer={
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button variant="ghost" onClick={() => { setOpen(false); setEditing(null); setFormData({}) }}>Cancel</Button>
             <Button variant="primary" loading={saveMutation.isPending}
               onClick={() => saveMutation.mutate(formData)}>Save</Button>
           </div>
