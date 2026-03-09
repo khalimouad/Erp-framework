@@ -92,6 +92,7 @@ export default function Companies() {
             <AdvancedTable<Company>
               columns={COLUMNS} data={data ?? []} rowKey="id"
               rowActions={rowActions} searchPlaceholder="Search companies…"
+              exportFilename="companies"
               emptyText="No companies yet"
             />
           </div>

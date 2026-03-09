@@ -136,6 +136,7 @@ export default function PurchaseOrders() {
               rowKey="id"
               rowActions={rowActions}
               searchPlaceholder="Search purchase orders..."
+              exportFilename="purchase-orders"
               emptyText="No purchase orders found"
             />
           </div>

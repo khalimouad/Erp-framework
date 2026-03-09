@@ -121,6 +121,7 @@ export default function Products() {
               rowKey="id"
               rowActions={rowActions}
               searchPlaceholder="Search products..."
+              exportFilename="products"
               emptyText="No products found"
             />
           </div>

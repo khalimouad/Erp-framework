@@ -144,6 +144,7 @@ export default function Employees() {
               rowKey="id"
               rowActions={rowActions}
               searchPlaceholder="Search employees..."
+              exportFilename="employees"
               emptyText="No employees found"
             />
           </div>

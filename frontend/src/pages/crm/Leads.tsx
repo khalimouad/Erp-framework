@@ -143,9 +143,9 @@ export default function Leads() {
         const { id: _i, created_at: _c, updated_at: _u, ...rest } = r
         createMutation.mutate({ ...rest, name: `${r.name} (copy)` })
       } },
-    { key: 'won',  label: 'Mark as Won',  icon: <CheckCircle size={14} />, hidden: r.status === 'won',
+    { key: 'won',  label: 'Mark as Won',  icon: <CheckCircle size={14} />, hidden: (row) => row.status === 'won',
       onClick: () => updateMutation.mutate({ id: r.id, d: { status: 'won' } }) },
-    { key: 'lost', label: 'Mark as Lost', icon: <XCircle size={14} />,    hidden: r.status === 'lost',
+    { key: 'lost', label: 'Mark as Lost', icon: <XCircle size={14} />,    hidden: (row) => row.status === 'lost',
       onClick: () => updateMutation.mutate({ id: r.id, d: { status: 'lost' } }) },
     { key: 'delete', label: 'Delete', icon: <Trash2 size={14} />, variant: 'danger' as const, separator: true,
       onClick: () => { if (confirm(`Delete "${r.name}"?`)) deleteMutation.mutate(r.id) } },
@@ -287,7 +287,7 @@ export default function Leads() {
                   data={leads}
                   rowKey="id"
                   loading={isLoading}
-                  rowActions={buildRowActions(leads[0] ?? {} as Lead) && undefined}
+                  rowActions={buildRowActions}
                   bulkActions={bulkActions}
                   onRowClick={r => open_('edit', r)}
                   emptyTitle="No leads yet"

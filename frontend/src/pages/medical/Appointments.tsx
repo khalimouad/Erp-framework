@@ -137,6 +137,7 @@ export default function Appointments() {
               rowKey="id"
               rowActions={rowActions}
               searchPlaceholder="Search appointments..."
+              exportFilename="appointments"
               emptyText="No appointments found"
             />
           </div>

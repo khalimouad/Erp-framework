@@ -135,6 +135,7 @@ export default function Patients() {
               rowKey="id"
               rowActions={rowActions}
               searchPlaceholder="Search patients..."
+              exportFilename="patients"
               emptyText="No patients found"
             />
           </div>

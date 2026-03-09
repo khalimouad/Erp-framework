@@ -220,7 +220,8 @@ interface AdvancedTableProps<T extends Record<string, unknown>> {
   /** Primary key field — default 'id' */
   rowKey?: string
   loading?: boolean
-  rowActions?: RowAction<T>[]
+  /** Static action list, or a per-row factory function */
+  rowActions?: RowAction<T>[] | ((row: T) => RowAction<T>[])
   bulkActions?: BulkAction<T>[]
   /** Called when a row is clicked (not via action buttons) */
   onRowClick?: (row: T) => void
@@ -239,7 +240,7 @@ export function AdvancedTable<T extends Record<string, unknown>>({
   data,
   rowKey = 'id',
   loading,
-  rowActions = [],
+  rowActions,
   bulkActions = [],
   onRowClick,
   emptyTitle = 'No records found',
@@ -251,6 +252,18 @@ export function AdvancedTable<T extends Record<string, unknown>>({
 }: AdvancedTableProps<T>) {
 
   const visibleCols = useMemo(() => columns.filter(c => !c.hidden), [columns])
+
+  /** Resolve the action list for a given row (handles both static array and factory function) */
+  const resolveRowActions = useCallback((row: T): RowAction<T>[] => {
+    if (!rowActions) return []
+    const actions = typeof rowActions === 'function' ? rowActions(row) : rowActions
+    return actions.filter(a => !a.hidden?.(row))
+  }, [rowActions])
+
+  /** True when there is any row-action config (used to show/hide the actions column) */
+  const hasRowActions = rowActions !== undefined && rowActions !== null && (
+    typeof rowActions === 'function' || (rowActions as RowAction<T>[]).length > 0
+  )
 
   // ── state ──────────────────────────────────────────────────────────────────
   const [search,    setSearch]    = useState('')
@@ -497,7 +510,7 @@ export function AdvancedTable<T extends Record<string, unknown>>({
               ))}
 
               {/* Row actions column */}
-              {rowActions.length > 0 && <th className="w-10 px-2 py-3" />}
+              {hasRowActions && <th className="w-10 px-2 py-3" />}
             </tr>
           </thead>
 
@@ -533,7 +546,7 @@ export function AdvancedTable<T extends Record<string, unknown>>({
               pageRows.map(row => {
                 const id       = getNestedValue(row, rowKey)
                 const isSelected = selected.has(id)
-                const visible  = rowActions.filter(a => !a.hidden?.(row))
+                const visible  = resolveRowActions(row)
 
                 return (
                   <tr
@@ -578,7 +591,7 @@ export function AdvancedTable<T extends Record<string, unknown>>({
                     ))}
 
                     {/* Row action dropdown */}
-                    {rowActions.length > 0 && (
+                    {hasRowActions && (
                       <td
                         className="px-2 py-3 text-right"
                         onClick={e => e.stopPropagation()}
@@ -593,9 +606,10 @@ export function AdvancedTable<T extends Record<string, unknown>>({
                             }
                             items={visible.map(a => ({
                               key: a.key,
-                              label: a.label,
+                              label: typeof a.label === 'function' ? a.label(row) : a.label,
                               icon: a.icon,
                               variant: a.variant === 'danger' ? 'danger' : 'default',
+                              separator: a.separator,
                               onClick: () => a.onClick(row),
                             }))}
                           />

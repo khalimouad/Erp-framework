@@ -136,6 +136,7 @@ export default function SalesOrders() {
               rowKey="id"
               rowActions={rowActions}
               searchPlaceholder="Search orders..."
+              exportFilename="sales-orders"
               emptyText="No orders found"
             />
           </div>

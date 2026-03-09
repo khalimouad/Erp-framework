@@ -112,6 +112,7 @@ export default function WorkOrders() {
               rowKey="id"
               rowActions={rowActions}
               searchPlaceholder="Search work orders..."
+              exportFilename="work-orders"
               emptyText="No work orders found"
             />
           </div>

@@ -156,6 +156,7 @@ export default function Invoices() {
               rowKey="id"
               rowActions={rowActions}
               searchPlaceholder="Search invoices..."
+              exportFilename="invoices"
               emptyText="No invoices found"
             />
           </div>

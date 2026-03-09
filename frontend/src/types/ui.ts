@@ -61,11 +61,12 @@ export interface ColumnDef<T = Record<string, unknown>> {
 
 export interface RowAction<T = Record<string, unknown>> {
   key: string
-  label: string
+  label: string | ((row: T) => string)
   icon?: ReactNode
   variant?: 'default' | 'danger'
   onClick: (row: T) => void
   hidden?: (row: T) => boolean
+  separator?: boolean
 }
 
 export interface BulkAction<T = Record<string, unknown>> {

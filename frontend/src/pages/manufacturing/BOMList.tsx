@@ -109,6 +109,7 @@ export default function BOMList() {
               rowKey="id"
               rowActions={rowActions}
               searchPlaceholder="Search BOMs..."
+              exportFilename="bill-of-materials"
               emptyText="No bills of materials found"
             />
           </div>

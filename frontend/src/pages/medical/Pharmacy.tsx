@@ -152,6 +152,7 @@ export default function Pharmacy() {
               rowKey="id"
               rowActions={rowActions}
               searchPlaceholder="Search drugs..."
+              exportFilename="pharmacy"
               emptyText="No pharmacy items found"
             />
           </div>

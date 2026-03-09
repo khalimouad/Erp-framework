@@ -109,6 +109,7 @@ export default function QualityChecks() {
             <AdvancedTable<QualityCheck>
               columns={COLUMNS} data={data ?? []} rowKey="id"
               rowActions={rowActions} searchPlaceholder="Search quality checks…"
+              exportFilename="quality-checks"
               emptyText="No quality checks yet"
             />
           </div>

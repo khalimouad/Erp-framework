@@ -355,6 +355,7 @@ export default function Users() {
               rowKey="id"
               rowActions={rowActions}
               searchPlaceholder="Search users…"
+              exportFilename="users"
               emptyText="No users found"
             />
           </div>
