@@ -27,6 +27,7 @@ import { CardView }       from '@/components/views/CardView'
 import { KanbanView }     from '@/components/views/KanbanView'
 import { ResponsiveTable } from '@/components/views/ResponsiveTable'
 
+import { useEditForm }   from '@/hooks/useEditForm'
 import { crmApi } from '@/api/client'
 import type { Lead } from '@/types'
 import type { ColumnDef, RowAction, BulkAction, FormFieldDef, BadgeColor } from '@/types/ui'
@@ -95,11 +96,9 @@ export default function Leads() {
   const qc = useQueryClient()
 
   const [view,     setView]     = useState<ViewMode>('list')
-  const [modal,    setModal]    = useState<'create' | 'edit' | null>(null)
-  const [formData, setFormData] = useState<Record<string, unknown>>(EMPTY)
-  const [editId,   setEditId]   = useState<number | null>(null)
   const [filter,   setFilter]   = useState<string | null>(null)
   const [showLost, setShowLost] = useState(false)
+  const { open, editing, formData, setFormData, openNew, openEdit, close } = useEditForm<Lead>()
 
   // ── Queries ────────────────────────────────────────────────────────────────
   const { data, isLoading } = useQuery({
@@ -110,11 +109,11 @@ export default function Leads() {
 
   const createMutation = useMutation({
     mutationFn: (d: Record<string, unknown>) => crmApi.createLead(d),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['leads'] }); close_() },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['leads'] }); close() },
   })
   const updateMutation = useMutation({
     mutationFn: ({ id, d }: { id: number; d: Record<string, unknown> }) => crmApi.updateLead(id, d),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['leads'] }); close_() },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['leads'] }); close() },
   })
   const deleteMutation = useMutation({
     mutationFn: (id: number) => crmApi.deleteLead(id),
@@ -122,21 +121,14 @@ export default function Leads() {
   })
 
   // ── Helpers ────────────────────────────────────────────────────────────────
-  const open_  = (mode: 'create' | 'edit', lead?: Lead) => {
-    setFormData(lead ? { ...lead } : { ...EMPTY })
-    setEditId(lead?.id ?? null)
-    setModal(mode)
-  }
-  const close_ = () => { setModal(null); setFormData({ ...EMPTY }); setEditId(null) }
-
   const handleSave = () => {
-    if (modal === 'create') createMutation.mutate(formData)
-    else if (editId)        updateMutation.mutate({ id: editId, d: formData })
+    if (!editing) createMutation.mutate(formData)
+    else          updateMutation.mutate({ id: editing.id, d: formData })
   }
 
   // ── Actions ────────────────────────────────────────────────────────────────
   const buildRowActions = useCallback((r: Lead) => [
-    { key: 'edit',      label: 'Edit',          icon: <Pencil size={14} />,      onClick: () => open_('edit', r) },
+    { key: 'edit',      label: 'Edit',          icon: <Pencil size={14} />,      onClick: () => openEdit(r) },
     { key: 'open',      label: 'Open form',     icon: <TrendingUp size={14} />,  onClick: () => {} },
     { key: 'duplicate', label: 'Duplicate',     icon: <Copy size={14} />,
       onClick: () => {
@@ -150,7 +142,7 @@ export default function Leads() {
     { key: 'delete', label: 'Delete', icon: <Trash2 size={14} />, variant: 'danger' as const, separator: true,
       onClick: () => { if (confirm(`Delete "${r.name}"?`)) deleteMutation.mutate(r.id) } },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [createMutation, updateMutation, deleteMutation, open_])
+  ], [createMutation, updateMutation, deleteMutation, openEdit])
 
   const bulkActions: BulkAction<Lead>[] = [
     { key: 'bulk_won',    label: 'Mark Won',   icon: <CheckCircle size={14} />,
@@ -181,7 +173,7 @@ export default function Leads() {
         subtitle="Track your sales pipeline"
         breadcrumbs={[{ label: 'CRM', href: '/crm' }, { label: 'Leads' }]}
         actions={[
-          { key: 'new', label: 'New Lead', icon: <Plus size={15} />, variant: 'primary', onClick: () => open_('create') },
+          { key: 'new', label: 'New Lead', icon: <Plus size={15} />, variant: 'primary', onClick: () => openNew({ ...EMPTY }) },
         ]}
         moreActions={[
           { key: 'import', label: 'Import CSV', icon: <Upload size={14} />,   onClick: () => alert('Import coming soon') },
@@ -275,7 +267,7 @@ export default function Leads() {
                   rowKey="id"
                   loading={isLoading}
                   buildRowActions={buildRowActions}
-                  onRowClick={r => open_('edit', r)}
+                  onRowClick={openEdit}
                   mobileStatusRender={r => <Badge color={STATUS_COLOR[r.status] ?? 'gray'} size="xs" dot>{r.status}</Badge>}
                   emptyTitle="No leads yet"
                   emptyText="Create your first lead to start tracking your pipeline."
@@ -290,7 +282,7 @@ export default function Leads() {
                   loading={isLoading}
                   rowActions={buildRowActions}
                   bulkActions={bulkActions}
-                  onRowClick={r => open_('edit', r)}
+                  onRowClick={openEdit}
                   emptyTitle="No leads yet"
                   emptyText="Create your first lead to start tracking your pipeline."
                   exportFilename="leads"
@@ -324,7 +316,7 @@ export default function Leads() {
                 { key: 'status', label: 'Stage', footer: true, render: r => <Badge color={STATUS_COLOR[r.status] ?? 'gray'} size="xs" dot>{r.status}</Badge> },
               ]}
               buildRowActions={buildRowActions}
-              onCardClick={r => open_('edit', r)}
+              onCardClick={openEdit}
               emptyTitle="No leads yet"
               emptyText="Create your first lead to start tracking your pipeline."
             />
@@ -339,7 +331,7 @@ export default function Leads() {
               columns={KANBAN_COLS}
               loading={isLoading}
               onStatusChange={(r, newStatus) => updateMutation.mutate({ id: r.id, d: { status: newStatus } })}
-              onAddCard={status => open_('create', { status } as unknown as Lead)}
+              onAddCard={status => openNew({ ...EMPTY, status })}
               card={{
                 renderTitle:    r => r.name,
                 renderSubtitle: r => r.contact_name ?? r.email ?? '',
@@ -351,7 +343,7 @@ export default function Leads() {
                   </div>
                 ),
                 buildRowActions,
-                onCardClick: r => open_('edit', r),
+                onCardClick: openEdit,
               }}
             />
           )}
@@ -360,20 +352,20 @@ export default function Leads() {
 
       {/* Create / Edit modal */}
       <Modal
-        open={modal !== null}
-        onClose={close_}
-        title={modal === 'create' ? 'New Lead' : 'Edit Lead'}
+        open={open}
+        onClose={close}
+        title={!editing ? 'New Lead' : 'Edit Lead'}
         size="lg"
         footer={
           <>
-            <Button variant="secondary" size="sm" onClick={close_}>Cancel</Button>
+            <Button variant="secondary" size="sm" onClick={close}>Cancel</Button>
             <Button
               variant="primary" size="sm"
               loading={createMutation.isPending || updateMutation.isPending}
               disabled={!formData.name}
               onClick={handleSave}
             >
-              {modal === 'create' ? 'Create Lead' : 'Save Changes'}
+              {!editing ? 'Create Lead' : 'Save Changes'}
             </Button>
           </>
         }

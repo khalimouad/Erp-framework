@@ -38,3 +38,12 @@ async def update_order(
     _=Depends(get_current_user),
 ):
     return await service.update_order(db, order_id, data)
+
+
+@router.delete("/orders/{order_id}", status_code=204)
+async def delete_order(
+    order_id: int,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    await service.delete_order(db, order_id)

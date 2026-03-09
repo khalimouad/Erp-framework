@@ -66,3 +66,9 @@ async def update_order(db: AsyncSession, order_id: int, data: SaleOrderUpdate) -
     await db.flush()
     await db.refresh(order)
     return order
+
+
+async def delete_order(db: AsyncSession, order_id: int) -> None:
+    order = await get_order(db, order_id)
+    await db.delete(order)
+    await db.flush()

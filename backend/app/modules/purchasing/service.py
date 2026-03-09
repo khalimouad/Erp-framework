@@ -65,3 +65,9 @@ async def update_po(db: AsyncSession, po_id: int, data: POUpdate) -> PurchaseOrd
     await db.flush()
     await db.refresh(po)
     return po
+
+
+async def delete_po(db: AsyncSession, po_id: int) -> None:
+    po = await get_po(db, po_id)
+    await db.delete(po)
+    await db.flush()

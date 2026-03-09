@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { PageTemplate }  from '@/components/layout/PageTemplate'
 import { AdvancedTable } from '@/components/table/AdvancedTable'
 import { TableCard }     from '@/components/views/TableCard'
@@ -72,8 +72,17 @@ export default function SalesOrders() {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => salesApi.deleteOrder(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sale-orders'] }),
+  })
+
   const rowActions: RowAction<SaleOrder>[] = [
     { key: 'edit', label: 'Edit', onClick: openEdit },
+    {
+      key: 'delete', label: 'Delete', icon: <Trash2 size={14} />, variant: 'danger',
+      onClick: (r) => { if (confirm(`Delete order "${r.reference}"?`)) deleteMutation.mutate(r.id) },
+    },
   ]
 
   const computedLines = lines.map(l => ({

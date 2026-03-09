@@ -38,3 +38,12 @@ async def update_po(
     _=Depends(get_current_user),
 ):
     return await service.update_po(db, po_id, data)
+
+
+@router.delete("/orders/{po_id}", status_code=204)
+async def delete_po(
+    po_id: int,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    await service.delete_po(db, po_id)

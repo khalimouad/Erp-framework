@@ -81,6 +81,7 @@ export const salesApi = {
   getOrder: (id: number) => api.get(`/sales/orders/${id}`),
   createOrder: (data: object) => api.post('/sales/orders', data),
   updateOrder: (id: number, data: object) => api.patch(`/sales/orders/${id}`, data),
+  deleteOrder: (id: number) => api.delete(`/sales/orders/${id}`),
 }
 
 // --- Purchasing ---
@@ -88,6 +89,7 @@ export const purchasingApi = {
   listOrders: (skip = 0, limit = 50) => api.get(`/purchasing/orders?skip=${skip}&limit=${limit}`),
   createOrder: (data: object) => api.post('/purchasing/orders', data),
   updateOrder: (id: number, data: object) => api.patch(`/purchasing/orders/${id}`, data),
+  deleteOrder: (id: number) => api.delete(`/purchasing/orders/${id}`),
 }
 
 // --- HR ---
@@ -135,6 +137,7 @@ export const accountingApi = {
   listInvoices: (skip = 0, limit = 50) => api.get(`/accounting/invoices?skip=${skip}&limit=${limit}`),
   createInvoice: (data: object) => api.post('/accounting/invoices', data),
   updateInvoice: (id: number, data: object) => api.patch(`/accounting/invoices/${id}`, data),
+  deleteInvoice: (id: number) => api.delete(`/accounting/invoices/${id}`),
   addPayment: (invoiceId: number, data: object) => api.post(`/accounting/invoices/${invoiceId}/payments`, data),
 }
 

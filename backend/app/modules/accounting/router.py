@@ -48,3 +48,12 @@ async def add_payment(
     _=Depends(get_current_user),
 ):
     return await service.add_payment(db, invoice_id, data)
+
+
+@router.delete("/invoices/{invoice_id}", status_code=204)
+async def delete_invoice(
+    invoice_id: int,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    await service.delete_invoice(db, invoice_id)

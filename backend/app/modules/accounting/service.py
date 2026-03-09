@@ -76,6 +76,12 @@ async def update_invoice(db: AsyncSession, invoice_id: int, data: InvoiceUpdate)
     return inv
 
 
+async def delete_invoice(db: AsyncSession, invoice_id: int) -> None:
+    inv = await get_invoice(db, invoice_id)
+    await db.delete(inv)
+    await db.flush()
+
+
 async def add_payment(db: AsyncSession, invoice_id: int, data: PaymentCreate) -> Payment:
     inv = await get_invoice(db, invoice_id)
     payment = Payment(invoice_id=invoice_id, **data.model_dump())

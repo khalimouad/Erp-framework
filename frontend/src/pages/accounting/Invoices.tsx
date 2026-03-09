@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { PageTemplate }  from '@/components/layout/PageTemplate'
 import { AdvancedTable } from '@/components/table/AdvancedTable'
 import { TableCard }     from '@/components/views/TableCard'
@@ -95,6 +95,11 @@ export default function Invoices() {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => accountingApi.deleteInvoice(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['invoices'] }),
+  })
+
   const rowActions: RowAction<Invoice>[] = [
     {
       key: 'payment',
@@ -104,6 +109,10 @@ export default function Invoices() {
         setPaymentData({ amount_paid: 0 })
         setPaymentOpen(true)
       },
+    },
+    {
+      key: 'delete', label: 'Delete', icon: <Trash2 size={14} />, variant: 'danger',
+      onClick: (r) => { if (confirm(\`Delete invoice "\${r.reference}"?\`)) deleteMutation.mutate(r.id) },
     },
   ]
 
