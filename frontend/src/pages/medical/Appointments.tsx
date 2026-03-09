@@ -1,14 +1,15 @@
-import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { PageTemplate }   from '@/components/layout/PageTemplate'
 import { AdvancedTable }  from '@/components/table/AdvancedTable'
+import { ResponsiveTable } from '@/components/views/ResponsiveTable'
+import { TableCard }      from '@/components/views/TableCard'
 import { Modal }          from '@/components/ui/Modal'
 import { Button }         from '@/components/ui/Button'
 import { Badge }          from '@/components/ui/Badge'
 import { FormView }       from '@/components/form/FormView'
+import { useEditForm }    from '@/hooks/useEditForm'
 import { medicalApi }     from '@/api/client'
-import { ResponsiveTable } from '@/components/views/ResponsiveTable'
 import type { Appointment } from '@/types'
 import type { ColumnDef, RowAction, FormFieldDef } from '@/types/ui'
 
@@ -59,9 +60,7 @@ const FIELDS: FormFieldDef[] = [
 
 export default function Appointments() {
   const qc = useQueryClient()
-  const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState<Appointment | null>(null)
-  const [formData, setFormData] = useState<Record<string, unknown>>({})
+  const { open, editing, formData, setFormData, openNew, openEdit, close } = useEditForm<Appointment>()
 
   const { data, isLoading } = useQuery<Appointment[]>({
     queryKey: ['appointments'],
@@ -73,8 +72,7 @@ export default function Appointments() {
       editing ? medicalApi.updateAppointment(editing.id, d) : medicalApi.createAppointment(d),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['appointments'] })
-      setOpen(false)
-      setEditing(null)
+      close()
     },
   })
 
@@ -82,7 +80,7 @@ export default function Appointments() {
     {
       key: 'edit',
       label: 'Edit',
-      onClick: (r) => { setEditing(r); setFormData({ ...r }); setOpen(true) },
+      onClick: openEdit,
     },
   ]
 
@@ -95,63 +93,61 @@ export default function Appointments() {
         label: 'New Appointment',
         icon: <Plus size={14} />,
         variant: 'primary',
-        onClick: () => { setEditing(null); setFormData({}); setOpen(true) },
+        onClick: () => openNew(),
       }]}
       loading={isLoading}
     >
-      <div className="p-4 sm:p-6">
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="sm:hidden">
-            <ResponsiveTable<Appointment>
-              columns={[
-                {
-                  key: 'appointment_type',
-                  label: 'Appointment',
-                  render: r => (
-                    <div>
-                      <div className="font-medium capitalize">{r.appointment_type ?? 'Consultation'}</div>
-                      <div className="text-xs text-gray-400">Patient #{r.patient_id}</div>
-                    </div>
-                  ),
-                },
-                { key: 'appointment_date', label: 'Date', render: r => new Date(r.appointment_date).toLocaleDateString() },
-              ]}
-              data={data ?? []}
-              rowKey="id"
-              loading={isLoading}
-              buildRowActions={(r) => [{ key: 'edit', label: 'Edit', onClick: () => { setEditing(r); setFormData({ ...r }); setOpen(true) } }]}
-              onRowClick={(r) => { setEditing(r); setFormData({ ...r }); setOpen(true) }}
-              mobileStatusRender={(r) => (
-                <Badge color={STATUS_COLOR[r.status] ?? 'gray'} size="xs">
-                  {r.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                </Badge>
-              )}
-              emptyTitle="No appointments yet"
-              emptyText="Schedule your first appointment."
-            />
-          </div>
-          <div className="hidden sm:block">
-            <AdvancedTable<Appointment>
-              columns={COLUMNS}
-              data={data ?? []}
-              rowKey="id"
-              rowActions={rowActions}
-              searchPlaceholder="Search appointments..."
-              exportFilename="appointments"
-              emptyText="No appointments found"
-            />
-          </div>
-        </div>
-      </div>
+      <TableCard
+        mobile={
+          <ResponsiveTable<Appointment>
+            columns={[
+              {
+                key: 'appointment_type',
+                label: 'Appointment',
+                render: r => (
+                  <div>
+                    <div className="font-medium capitalize">{r.appointment_type ?? 'Consultation'}</div>
+                    <div className="text-xs text-gray-400">Patient #{r.patient_id}</div>
+                  </div>
+                ),
+              },
+              { key: 'appointment_date', label: 'Date', render: r => new Date(r.appointment_date).toLocaleDateString() },
+            ]}
+            data={data ?? []}
+            rowKey="id"
+            loading={isLoading}
+            buildRowActions={(r) => [{ key: 'edit', label: 'Edit', onClick: () => openEdit(r) }]}
+            onRowClick={openEdit}
+            mobileStatusRender={(r) => (
+              <Badge color={STATUS_COLOR[r.status] ?? 'gray'} size="xs">
+                {r.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+              </Badge>
+            )}
+            emptyTitle="No appointments yet"
+            emptyText="Schedule your first appointment."
+          />
+        }
+        desktop={
+          <AdvancedTable<Appointment>
+            columns={COLUMNS}
+            data={data ?? []}
+            rowKey="id"
+            rowActions={rowActions}
+            searchPlaceholder="Search appointments..."
+            exportFilename="appointments"
+            emptyText="No appointments found"
+          />
+        }
+      />
 
       <Modal
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={close}
         title={editing ? `Edit — Appointment #${editing.id}` : 'New Appointment'}
         size="md"
         footer={
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button variant="ghost" onClick={close}>Cancel</Button>
             <Button
               variant="primary"
               loading={saveMutation.isPending}

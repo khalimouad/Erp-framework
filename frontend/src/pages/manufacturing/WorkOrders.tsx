@@ -1,14 +1,15 @@
-import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { PageTemplate }    from '@/components/layout/PageTemplate'
 import { AdvancedTable }   from '@/components/table/AdvancedTable'
+import { ResponsiveTable }  from '@/components/views/ResponsiveTable'
+import { TableCard }       from '@/components/views/TableCard'
 import { Modal }           from '@/components/ui/Modal'
 import { Button }          from '@/components/ui/Button'
 import { Badge }           from '@/components/ui/Badge'
 import { FormView }        from '@/components/form/FormView'
+import { useEditForm }     from '@/hooks/useEditForm'
 import { manufacturingApi } from '@/api/client'
-import { ResponsiveTable }  from '@/components/views/ResponsiveTable'
 import type { WorkOrder }   from '@/types'
 import type { ColumnDef, RowAction, FormFieldDef } from '@/types/ui'
 
@@ -43,9 +44,7 @@ const FIELDS: FormFieldDef[] = [
 
 export default function WorkOrders() {
   const qc = useQueryClient()
-  const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState<WorkOrder | null>(null)
-  const [formData, setFormData] = useState<Record<string, unknown>>({})
+  const { open, editing, formData, setFormData, openNew, openEdit, close } = useEditForm<WorkOrder>()
 
   const { data, isLoading } = useQuery<WorkOrder[]>({
     queryKey: ['work-orders'],
@@ -57,8 +56,7 @@ export default function WorkOrders() {
       editing ? manufacturingApi.updateWorkOrder(editing.id, d) : manufacturingApi.createWorkOrder(d),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['work-orders'] })
-      setOpen(false)
-      setEditing(null)
+      close()
     },
   })
 
@@ -66,7 +64,7 @@ export default function WorkOrders() {
     {
       key: 'edit',
       label: 'Edit',
-      onClick: (r) => { setEditing(r); setFormData({ ...r }); setOpen(true) },
+      onClick: openEdit,
     },
   ]
 
@@ -79,54 +77,52 @@ export default function WorkOrders() {
         label: 'New Work Order',
         icon: <Plus size={14} />,
         variant: 'primary',
-        onClick: () => { setEditing(null); setFormData({}); setOpen(true) },
+        onClick: () => openNew(),
       }]}
       loading={isLoading}
     >
-      <div className="p-4 sm:p-6">
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="sm:hidden">
-            <ResponsiveTable<WorkOrder>
-              columns={[
-                { key: 'reference',        label: 'Reference' },
-                { key: 'quantity_planned', label: 'Planned Qty', render: r => String(r.quantity_planned) },
-              ]}
-              data={data ?? []}
-              rowKey="id"
-              loading={isLoading}
-              buildRowActions={(r) => [{ key: 'edit', label: 'Edit', onClick: () => { setEditing(r); setFormData({ ...r }); setOpen(true) } }]}
-              onRowClick={(r) => { setEditing(r); setFormData({ ...r }); setOpen(true) }}
-              mobileStatusRender={(r) => (
-                <Badge color={STATUS_COLOR[r.status] ?? 'gray'} size="xs">
-                  {r.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                </Badge>
-              )}
-              emptyTitle="No work orders yet"
-              emptyText="Create your first work order."
-            />
-          </div>
-          <div className="hidden sm:block">
-            <AdvancedTable<WorkOrder>
-              columns={COLUMNS}
-              data={data ?? []}
-              rowKey="id"
-              rowActions={rowActions}
-              searchPlaceholder="Search work orders..."
-              exportFilename="work-orders"
-              emptyText="No work orders found"
-            />
-          </div>
-        </div>
-      </div>
+      <TableCard
+        mobile={
+          <ResponsiveTable<WorkOrder>
+            columns={[
+              { key: 'reference',        label: 'Reference' },
+              { key: 'quantity_planned', label: 'Planned Qty', render: r => String(r.quantity_planned) },
+            ]}
+            data={data ?? []}
+            rowKey="id"
+            loading={isLoading}
+            buildRowActions={(r) => [{ key: 'edit', label: 'Edit', onClick: () => openEdit(r) }]}
+            onRowClick={openEdit}
+            mobileStatusRender={(r) => (
+              <Badge color={STATUS_COLOR[r.status] ?? 'gray'} size="xs">
+                {r.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+              </Badge>
+            )}
+            emptyTitle="No work orders yet"
+            emptyText="Create your first work order."
+          />
+        }
+        desktop={
+          <AdvancedTable<WorkOrder>
+            columns={COLUMNS}
+            data={data ?? []}
+            rowKey="id"
+            rowActions={rowActions}
+            searchPlaceholder="Search work orders..."
+            exportFilename="work-orders"
+            emptyText="No work orders found"
+          />
+        }
+      />
 
       <Modal
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={close}
         title={editing ? `Edit — ${editing.reference}` : 'New Work Order'}
         size="md"
         footer={
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button variant="ghost" onClick={close}>Cancel</Button>
             <Button
               variant="primary"
               loading={saveMutation.isPending}

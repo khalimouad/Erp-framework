@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { PageTemplate }  from '@/components/layout/PageTemplate'
 import { AdvancedTable } from '@/components/table/AdvancedTable'
+import { TableCard }     from '@/components/views/TableCard'
 import { Modal }         from '@/components/ui/Modal'
 import { Button }        from '@/components/ui/Button'
 import { Badge }         from '@/components/ui/Badge'
@@ -105,41 +106,39 @@ export default function SalesOrders() {
       }]}
       loading={isLoading}
     >
-      <div className="p-4 sm:p-6">
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="sm:hidden">
-            <ResponsiveTable<SaleOrder>
-              columns={[
-                { key: 'reference',     label: 'Reference' },
-                { key: 'customer_name', label: 'Customer' },
-              ]}
-              data={data ?? []}
-              rowKey="id"
-              loading={isLoading}
-              buildRowActions={(r) => [{ key: 'edit', label: 'Edit', onClick: () => openEdit(r) }]}
-              onRowClick={openEdit}
-              mobileStatusRender={(r) => (
-                <Badge color={STATUS_COLOR[r.status] ?? 'gray'} size="xs">
-                  {r.status.charAt(0).toUpperCase() + r.status.slice(1)}
-                </Badge>
-              )}
-              emptyTitle="No orders yet"
-              emptyText="Create your first sales order."
-            />
-          </div>
-          <div className="hidden sm:block">
-            <AdvancedTable<SaleOrder>
-              columns={COLUMNS}
-              data={data ?? []}
-              rowKey="id"
-              rowActions={rowActions}
-              searchPlaceholder="Search orders..."
-              exportFilename="sales-orders"
-              emptyText="No orders found"
-            />
-          </div>
-        </div>
-      </div>
+      <TableCard
+        mobile={
+          <ResponsiveTable<SaleOrder>
+            columns={[
+              { key: 'reference',     label: 'Reference' },
+              { key: 'customer_name', label: 'Customer' },
+            ]}
+            data={data ?? []}
+            rowKey="id"
+            loading={isLoading}
+            buildRowActions={(r) => [{ key: 'edit', label: 'Edit', onClick: () => openEdit(r) }]}
+            onRowClick={openEdit}
+            mobileStatusRender={(r) => (
+              <Badge color={STATUS_COLOR[r.status] ?? 'gray'} size="xs">
+                {r.status.charAt(0).toUpperCase() + r.status.slice(1)}
+              </Badge>
+            )}
+            emptyTitle="No orders yet"
+            emptyText="Create your first sales order."
+          />
+        }
+        desktop={
+          <AdvancedTable<SaleOrder>
+            columns={COLUMNS}
+            data={data ?? []}
+            rowKey="id"
+            rowActions={rowActions}
+            searchPlaceholder="Search orders..."
+            exportFilename="sales-orders"
+            emptyText="No orders found"
+          />
+        }
+      />
 
       <Modal
         open={open}

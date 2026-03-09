@@ -1,15 +1,16 @@
-import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 
 import { PageTemplate }  from '@/components/layout/PageTemplate'
 import { AdvancedTable } from '@/components/table/AdvancedTable'
+import { ResponsiveTable } from '@/components/views/ResponsiveTable'
+import { TableCard }     from '@/components/views/TableCard'
 import { Modal }         from '@/components/ui/Modal'
 import { Button }        from '@/components/ui/Button'
-import { Badge }         from '@/components/ui/Badge'
+import { StatusBadge }   from '@/components/ui/StatusBadge'
 import { FormView }      from '@/components/form/FormView'
+import { useEditForm }   from '@/hooks/useEditForm'
 import { companiesApi }  from '@/api/client'
-import { ResponsiveTable } from '@/components/views/ResponsiveTable'
 import type { Company }  from '@/types'
 import type { ColumnDef, RowAction, FormFieldDef } from '@/types/ui'
 
@@ -22,7 +23,7 @@ const COLUMNS: ColumnDef<Company>[] = [
   { key: 'currency',label: 'Currency', sortable: true },
   {
     key: 'is_active', label: 'Status', sortable: true,
-    render: (r) => <Badge color={r.is_active ? 'green' : 'gray'} dot size="sm">{r.is_active ? 'Active' : 'Inactive'}</Badge>,
+    render: (r) => <StatusBadge active={r.is_active} size="sm" />,
   },
 ]
 
@@ -39,9 +40,7 @@ const FIELDS: FormFieldDef[] = [
 
 export default function Companies() {
   const qc = useQueryClient()
-  const [open,     setOpen]     = useState(false)
-  const [editing,  setEditing]  = useState<Company | null>(null)
-  const [formData, setFormData] = useState<Record<string, unknown>>({})
+  const { open, editing, formData, setFormData, openNew, openEdit, close } = useEditForm<Company>()
 
   const { data, isLoading } = useQuery<Company[]>({
     queryKey: ['companies'],
@@ -51,11 +50,11 @@ export default function Companies() {
   const saveMutation = useMutation({
     mutationFn: (d: Record<string, unknown>) =>
       editing ? companiesApi.update(editing.id, d) : companiesApi.create(d),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['companies'] }); setOpen(false); setEditing(null) },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['companies'] }); close() },
   })
 
   const rowActions: RowAction<Company>[] = [
-    { key: 'edit', label: 'Edit', onClick: (r) => { setEditing(r); setFormData({ ...r }); setOpen(true) } },
+    { key: 'edit', label: 'Edit', onClick: openEdit },
   ]
 
   return (
@@ -63,48 +62,42 @@ export default function Companies() {
       title="Companies"
       breadcrumbs={[{ label: 'Companies' }]}
       actions={[{ key: 'new', label: 'New Company', icon: <Plus size={14} />, variant: 'primary',
-        onClick: () => { setEditing(null); setFormData({ currency: 'USD', is_active: true }); setOpen(true) } }]}
+        onClick: () => openNew({ currency: 'USD', is_active: true }) }]}
       loading={isLoading}
     >
-      <div className="p-4 sm:p-6">
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="sm:hidden">
-            <ResponsiveTable<Company>
-              columns={[
-                { key: 'name',    label: 'Company' },
-                { key: 'country', label: 'Country' },
-              ]}
-              data={data ?? []}
-              rowKey="id"
-              loading={isLoading}
-              buildRowActions={(r) => [{ key: 'edit', label: 'Edit', onClick: () => { setEditing(r); setFormData({ ...r }); setOpen(true) } }]}
-              onRowClick={(r) => { setEditing(r); setFormData({ ...r }); setOpen(true) }}
-              mobileStatusRender={(r) => (
-                <Badge color={r.is_active ? 'green' : 'gray'} size="xs" dot>
-                  {r.is_active ? 'Active' : 'Inactive'}
-                </Badge>
-              )}
-              emptyTitle="No companies yet"
-              emptyText="Add your first company."
-            />
-          </div>
-          <div className="hidden sm:block">
-            <AdvancedTable<Company>
-              columns={COLUMNS} data={data ?? []} rowKey="id"
-              rowActions={rowActions} searchPlaceholder="Search companies…"
-              exportFilename="companies"
-              emptyText="No companies yet"
-            />
-          </div>
-        </div>
-      </div>
+      <TableCard
+        mobile={
+          <ResponsiveTable<Company>
+            columns={[
+              { key: 'name',    label: 'Company' },
+              { key: 'country', label: 'Country' },
+            ]}
+            data={data ?? []}
+            rowKey="id"
+            loading={isLoading}
+            buildRowActions={(r) => [{ key: 'edit', label: 'Edit', onClick: () => openEdit(r) }]}
+            onRowClick={openEdit}
+            mobileStatusRender={(r) => <StatusBadge active={r.is_active} />}
+            emptyTitle="No companies yet"
+            emptyText="Add your first company."
+          />
+        }
+        desktop={
+          <AdvancedTable<Company>
+            columns={COLUMNS} data={data ?? []} rowKey="id"
+            rowActions={rowActions} searchPlaceholder="Search companies…"
+            exportFilename="companies"
+            emptyText="No companies yet"
+          />
+        }
+      />
 
       <Modal
-        open={open} onClose={() => { setOpen(false); setEditing(null); setFormData({}) }}
+        open={open} onClose={close}
         title={editing ? `Edit — ${editing.name}` : 'New Company'} size="lg"
         footer={
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => { setOpen(false); setEditing(null); setFormData({}) }}>Cancel</Button>
+            <Button variant="ghost" onClick={close}>Cancel</Button>
             <Button variant="primary" loading={saveMutation.isPending}
               onClick={() => saveMutation.mutate(formData)}>Save</Button>
           </div>

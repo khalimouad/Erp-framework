@@ -1,15 +1,16 @@
-import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 
 import { PageTemplate }  from '@/components/layout/PageTemplate'
 import { AdvancedTable } from '@/components/table/AdvancedTable'
+import { ResponsiveTable }  from '@/components/views/ResponsiveTable'
+import { TableCard }     from '@/components/views/TableCard'
 import { Modal }         from '@/components/ui/Modal'
 import { Button }        from '@/components/ui/Button'
 import { Badge }         from '@/components/ui/Badge'
 import { FormView }      from '@/components/form/FormView'
+import { useEditForm }   from '@/hooks/useEditForm'
 import { qualityApi }       from '@/api/client'
-import { ResponsiveTable }  from '@/components/views/ResponsiveTable'
 import type { QualityCheck } from '@/types'
 import type { ColumnDef, RowAction, FormFieldDef, BadgeColor } from '@/types/ui'
 
@@ -57,9 +58,7 @@ const FIELDS: FormFieldDef[] = [
 
 export default function QualityChecks() {
   const qc = useQueryClient()
-  const [open,     setOpen]     = useState(false)
-  const [editing,  setEditing]  = useState<QualityCheck | null>(null)
-  const [formData, setFormData] = useState<Record<string, unknown>>({})
+  const { open, editing, formData, setFormData, openNew, openEdit, close } = useEditForm<QualityCheck>()
 
   const { data, isLoading } = useQuery<QualityCheck[]>({
     queryKey: ['quality-checks'],
@@ -69,11 +68,11 @@ export default function QualityChecks() {
   const saveMutation = useMutation({
     mutationFn: (d: Record<string, unknown>) =>
       editing ? qualityApi.updateQc(editing.id, d) : qualityApi.createQc(d),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['quality-checks'] }); setOpen(false); setEditing(null) },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['quality-checks'] }); close() },
   })
 
   const rowActions: RowAction<QualityCheck>[] = [
-    { key: 'edit', label: 'Record Result', onClick: (r) => { setEditing(r); setFormData({ ...r }); setOpen(true) } },
+    { key: 'edit', label: 'Record Result', onClick: openEdit },
   ]
 
   return (
@@ -81,47 +80,45 @@ export default function QualityChecks() {
       title="Quality Control"
       breadcrumbs={[{ label: 'Quality', href: '/quality' }, { label: 'Checks' }]}
       actions={[{ key: 'new', label: 'New Check', icon: <Plus size={14} />, variant: 'primary',
-        onClick: () => { setEditing(null); setFormData({}); setOpen(true) } }]}
+        onClick: () => openNew() }]}
       loading={isLoading}
     >
-      <div className="p-4 sm:p-6">
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="sm:hidden">
-            <ResponsiveTable<QualityCheck>
-              columns={[
-                { key: 'reference',  label: 'Reference' },
-                { key: 'check_type', label: 'Type' },
-              ]}
-              data={data ?? []}
-              rowKey="id"
-              loading={isLoading}
-              buildRowActions={(r) => [{ key: 'edit', label: 'Record Result', onClick: () => { setEditing(r); setFormData({ ...r }); setOpen(true) } }]}
-              onRowClick={(r) => { setEditing(r); setFormData({ ...r }); setOpen(true) }}
-              mobileStatusRender={(r) => r.result
-                ? <Badge color={RESULT_COLOR[r.result] ?? 'gray'} size="xs" dot>{r.result.replace('_', ' ')}</Badge>
-                : <span className="text-xs text-gray-400 italic">Pending</span>
-              }
-              emptyTitle="No quality checks yet"
-              emptyText="Create your first quality check."
-            />
-          </div>
-          <div className="hidden sm:block">
-            <AdvancedTable<QualityCheck>
-              columns={COLUMNS} data={data ?? []} rowKey="id"
-              rowActions={rowActions} searchPlaceholder="Search quality checks…"
-              exportFilename="quality-checks"
-              emptyText="No quality checks yet"
-            />
-          </div>
-        </div>
-      </div>
+      <TableCard
+        mobile={
+          <ResponsiveTable<QualityCheck>
+            columns={[
+              { key: 'reference',  label: 'Reference' },
+              { key: 'check_type', label: 'Type' },
+            ]}
+            data={data ?? []}
+            rowKey="id"
+            loading={isLoading}
+            buildRowActions={(r) => [{ key: 'edit', label: 'Record Result', onClick: () => openEdit(r) }]}
+            onRowClick={openEdit}
+            mobileStatusRender={(r) => r.result
+              ? <Badge color={RESULT_COLOR[r.result] ?? 'gray'} size="xs" dot>{r.result.replace('_', ' ')}</Badge>
+              : <span className="text-xs text-gray-400 italic">Pending</span>
+            }
+            emptyTitle="No quality checks yet"
+            emptyText="Create your first quality check."
+          />
+        }
+        desktop={
+          <AdvancedTable<QualityCheck>
+            columns={COLUMNS} data={data ?? []} rowKey="id"
+            rowActions={rowActions} searchPlaceholder="Search quality checks…"
+            exportFilename="quality-checks"
+            emptyText="No quality checks yet"
+          />
+        }
+      />
 
       <Modal
-        open={open} onClose={() => { setOpen(false); setEditing(null); setFormData({}) }}
+        open={open} onClose={close}
         title={editing ? `Edit Check — ${editing.reference}` : 'New Quality Check'} size="md"
         footer={
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => { setOpen(false); setEditing(null); setFormData({}) }}>Cancel</Button>
+            <Button variant="ghost" onClick={close}>Cancel</Button>
             <Button variant="primary" loading={saveMutation.isPending}
               onClick={() => saveMutation.mutate(formData)}>Save</Button>
           </div>

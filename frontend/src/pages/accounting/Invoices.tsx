@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { PageTemplate }  from '@/components/layout/PageTemplate'
 import { AdvancedTable } from '@/components/table/AdvancedTable'
+import { TableCard }     from '@/components/views/TableCard'
 import { Modal }         from '@/components/ui/Modal'
 import { Button }        from '@/components/ui/Button'
 import { Badge }         from '@/components/ui/Badge'
@@ -119,49 +120,47 @@ export default function Invoices() {
       }]}
       loading={isLoading}
     >
-      <div className="p-4 sm:p-6">
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="sm:hidden">
-            <ResponsiveTable<Invoice>
-              columns={[
-                {
-                  key: 'reference',
-                  label: 'Invoice',
-                  render: r => (
-                    <div>
-                      <div className="font-medium">{r.reference}</div>
-                      <div className="text-xs text-gray-400">{r.partner_name}</div>
-                    </div>
-                  ),
-                },
-                { key: 'total_amount', label: 'Total', render: r => `$${r.total_amount.toFixed(2)}` },
-              ]}
-              data={data ?? []}
-              rowKey="id"
-              loading={isLoading}
-              buildRowActions={(r) => rowActions.map(a => ({ key: a.key, label: a.label as string, onClick: () => a.onClick(r) }))}
-              mobileStatusRender={(r) => (
-                <Badge color={STATUS_COLOR[r.status] ?? 'gray'} size="xs">
-                  {r.status.charAt(0).toUpperCase() + r.status.slice(1)}
-                </Badge>
-              )}
-              emptyTitle="No invoices yet"
-              emptyText="Create your first invoice."
-            />
-          </div>
-          <div className="hidden sm:block">
-            <AdvancedTable<Invoice>
-              columns={COLUMNS}
-              data={data ?? []}
-              rowKey="id"
-              rowActions={rowActions}
-              searchPlaceholder="Search invoices..."
-              exportFilename="invoices"
-              emptyText="No invoices found"
-            />
-          </div>
-        </div>
-      </div>
+      <TableCard
+        mobile={
+          <ResponsiveTable<Invoice>
+            columns={[
+              {
+                key: 'reference',
+                label: 'Invoice',
+                render: r => (
+                  <div>
+                    <div className="font-medium">{r.reference}</div>
+                    <div className="text-xs text-gray-400">{r.partner_name}</div>
+                  </div>
+                ),
+              },
+              { key: 'total_amount', label: 'Total', render: r => `$${r.total_amount.toFixed(2)}` },
+            ]}
+            data={data ?? []}
+            rowKey="id"
+            loading={isLoading}
+            buildRowActions={(r) => rowActions.map(a => ({ key: a.key, label: a.label as string, onClick: () => a.onClick(r) }))}
+            mobileStatusRender={(r) => (
+              <Badge color={STATUS_COLOR[r.status] ?? 'gray'} size="xs">
+                {r.status.charAt(0).toUpperCase() + r.status.slice(1)}
+              </Badge>
+            )}
+            emptyTitle="No invoices yet"
+            emptyText="Create your first invoice."
+          />
+        }
+        desktop={
+          <AdvancedTable<Invoice>
+            columns={COLUMNS}
+            data={data ?? []}
+            rowKey="id"
+            rowActions={rowActions}
+            searchPlaceholder="Search invoices..."
+            exportFilename="invoices"
+            emptyText="No invoices found"
+          />
+        }
+      />
 
       <Modal
         open={open}

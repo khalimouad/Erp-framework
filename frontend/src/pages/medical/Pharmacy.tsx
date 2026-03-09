@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, AlertTriangle } from 'lucide-react'
 import { PageTemplate }  from '@/components/layout/PageTemplate'
@@ -6,6 +5,7 @@ import { AdvancedTable } from '@/components/table/AdvancedTable'
 import { Modal }         from '@/components/ui/Modal'
 import { Button }        from '@/components/ui/Button'
 import { FormView }      from '@/components/form/FormView'
+import { useEditForm }   from '@/hooks/useEditForm'
 import { medicalApi }    from '@/api/client'
 import { ResponsiveTable } from '@/components/views/ResponsiveTable'
 import type { PharmacyItem } from '@/types'
@@ -54,9 +54,7 @@ const FIELDS: FormFieldDef[] = [
 
 export default function Pharmacy() {
   const qc = useQueryClient()
-  const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState<PharmacyItem | null>(null)
-  const [formData, setFormData] = useState<Record<string, unknown>>({})
+  const { open, editing, formData, setFormData, openNew, openEdit, close } = useEditForm<PharmacyItem>()
 
   const { data, isLoading } = useQuery<PharmacyItem[]>({
     queryKey: ['pharmacy'],
@@ -76,8 +74,7 @@ export default function Pharmacy() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['pharmacy'] })
       qc.invalidateQueries({ queryKey: ['pharmacy-low'] })
-      setOpen(false)
-      setEditing(null)
+      close()
     },
   })
 
@@ -85,7 +82,7 @@ export default function Pharmacy() {
     {
       key: 'edit',
       label: 'Edit',
-      onClick: (r) => { setEditing(r); setFormData({ ...r }); setOpen(true) },
+      onClick: openEdit,
     },
   ]
 
@@ -100,7 +97,7 @@ export default function Pharmacy() {
         label: 'Add Drug',
         icon: <Plus size={14} />,
         variant: 'primary',
-        onClick: () => { setEditing(null); setFormData({}); setOpen(true) },
+        onClick: () => openNew(),
       }]}
       loading={isLoading}
     >
@@ -139,8 +136,8 @@ export default function Pharmacy() {
               data={data ?? []}
               rowKey="id"
               loading={isLoading}
-              buildRowActions={(r) => [{ key: 'edit', label: 'Edit', onClick: () => { setEditing(r); setFormData({ ...r }); setOpen(true) } }]}
-              onRowClick={(r) => { setEditing(r); setFormData({ ...r }); setOpen(true) }}
+              buildRowActions={(r) => [{ key: 'edit', label: 'Edit', onClick: () => openEdit(r) }]}
+              onRowClick={openEdit}
               emptyTitle="No drugs yet"
               emptyText="Add your first pharmacy item."
             />
@@ -161,12 +158,12 @@ export default function Pharmacy() {
 
       <Modal
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={close}
         title={editing ? `Edit — ${editing.drug_name}` : 'Add Drug'}
         size="md"
         footer={
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button variant="ghost" onClick={close}>Cancel</Button>
             <Button
               variant="primary"
               loading={saveMutation.isPending}

@@ -1,13 +1,14 @@
-import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { PageTemplate }    from '@/components/layout/PageTemplate'
 import { AdvancedTable }   from '@/components/table/AdvancedTable'
 import { ResponsiveTable } from '@/components/views/ResponsiveTable'
+import { TableCard }       from '@/components/views/TableCard'
 import { Modal }           from '@/components/ui/Modal'
 import { Button }          from '@/components/ui/Button'
-import { Badge }           from '@/components/ui/Badge'
+import { StatusBadge }     from '@/components/ui/StatusBadge'
 import { FormView }        from '@/components/form/FormView'
+import { useEditForm }     from '@/hooks/useEditForm'
 import { hrApi }           from '@/api/client'
 import type { Employee }   from '@/types'
 import type { ColumnDef, RowAction, FormFieldDef } from '@/types/ui'
@@ -24,11 +25,7 @@ const COLUMNS: ColumnDef<Employee>[] = [
   {
     key: 'is_active',
     label: 'Status',
-    render: (row: Employee) => (
-      <Badge color={row.is_active ? 'green' : 'gray'} dot>
-        {row.is_active ? 'Active' : 'Inactive'}
-      </Badge>
-    ),
+    render: (row: Employee) => <StatusBadge active={row.is_active} size="sm" />,
   },
 ]
 
@@ -43,9 +40,7 @@ const FIELDS: FormFieldDef[] = [
 
 export default function Employees() {
   const qc = useQueryClient()
-  const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState<Employee | null>(null)
-  const [formData, setFormData] = useState<Record<string, unknown>>({})
+  const { open, editing, formData, setFormData, openNew, openEdit, close } = useEditForm<Employee>()
 
   const { data, isLoading } = useQuery<Employee[]>({
     queryKey: ['employees'],
@@ -57,8 +52,7 @@ export default function Employees() {
       editing ? hrApi.updateEmployee(editing.id, d) : hrApi.createEmployee(d),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['employees'] })
-      setOpen(false)
-      setEditing(null)
+      close()
     },
   })
 
@@ -66,8 +60,6 @@ export default function Employees() {
     mutationFn: (r: Employee) => hrApi.updateEmployee(r.id, { is_active: !r.is_active }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['employees'] }),
   })
-
-  const openEdit = (r: Employee) => { setEditing(r); setFormData({ ...r }); setOpen(true) }
 
   const rowActions: RowAction<Employee>[] = [
     {
@@ -93,72 +85,66 @@ export default function Employees() {
         label: 'New Employee',
         icon: <Plus size={14} />,
         variant: 'primary',
-        onClick: () => { setEditing(null); setFormData({}); setOpen(true) },
+        onClick: () => openNew(),
       }]}
       loading={isLoading}
     >
-      <div className="p-4 sm:p-6">
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="sm:hidden">
-            <ResponsiveTable<Employee>
-              columns={[
-                {
-                  key: 'name',
-                  label: 'Employee',
-                  render: r => (
-                    <div>
-                      <div className="font-medium">{r.first_name} {r.last_name}</div>
-                      <div className="text-xs text-gray-400">{r.job_title ?? 'No title'}</div>
-                    </div>
-                  ),
-                },
-                { key: 'work_email', label: 'Email' },
-              ]}
-              data={data ?? []}
-              rowKey="id"
-              loading={isLoading}
-              buildRowActions={(r) => [
-                { key: 'edit', label: 'Edit', onClick: () => openEdit(r) },
-                {
-                  key: 'deactivate',
-                  label: r.is_active ? 'Deactivate' : 'Activate',
-                  variant: 'danger' as const,
-                  separator: true,
-                  onClick: () => toggleActiveMutation.mutate(r),
-                },
-              ]}
-              onRowClick={openEdit}
-              mobileStatusRender={(r) => (
-                <Badge color={r.is_active ? 'green' : 'gray'} size="xs" dot>
-                  {r.is_active ? 'Active' : 'Inactive'}
-                </Badge>
-              )}
-              emptyTitle="No employees yet"
-              emptyText="Add your first employee to get started."
-            />
-          </div>
-          <div className="hidden sm:block">
-            <AdvancedTable<Employee>
-              columns={COLUMNS}
-              data={data ?? []}
-              rowKey="id"
-              rowActions={rowActions}
-              searchPlaceholder="Search employees..."
-              exportFilename="employees"
-              emptyText="No employees found"
-            />
-          </div>
-        </div>
-      </div>
+      <TableCard
+        mobile={
+          <ResponsiveTable<Employee>
+            columns={[
+              {
+                key: 'name',
+                label: 'Employee',
+                render: r => (
+                  <div>
+                    <div className="font-medium">{r.first_name} {r.last_name}</div>
+                    <div className="text-xs text-gray-400">{r.job_title ?? 'No title'}</div>
+                  </div>
+                ),
+              },
+              { key: 'work_email', label: 'Email' },
+            ]}
+            data={data ?? []}
+            rowKey="id"
+            loading={isLoading}
+            buildRowActions={(r) => [
+              { key: 'edit', label: 'Edit', onClick: () => openEdit(r) },
+              {
+                key: 'deactivate',
+                label: r.is_active ? 'Deactivate' : 'Activate',
+                variant: 'danger' as const,
+                separator: true,
+                onClick: () => toggleActiveMutation.mutate(r),
+              },
+            ]}
+            onRowClick={openEdit}
+            mobileStatusRender={(r) => <StatusBadge active={r.is_active} />}
+            emptyTitle="No employees yet"
+            emptyText="Add your first employee to get started."
+          />
+        }
+        desktop={
+          <AdvancedTable<Employee>
+            columns={COLUMNS}
+            data={data ?? []}
+            rowKey="id"
+            rowActions={rowActions}
+            searchPlaceholder="Search employees..."
+            exportFilename="employees"
+            emptyText="No employees found"
+          />
+        }
+      />
 
       <Modal
         open={open}
-        onClose={() => { setOpen(false); setEditing(null); setFormData({}) }}
+        onClose={close}
         title={editing ? `Edit — ${editing.first_name} ${editing.last_name}` : 'New Employee'}
         size="md"
         footer={
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => { setOpen(false); setEditing(null); setFormData({}) }}>Cancel</Button>
+            <Button variant="ghost" onClick={close}>Cancel</Button>
             <Button
               variant="primary"
               loading={saveMutation.isPending}

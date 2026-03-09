@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { PageTemplate }  from '@/components/layout/PageTemplate'
 import { AdvancedTable } from '@/components/table/AdvancedTable'
+import { TableCard }     from '@/components/views/TableCard'
 import { Modal }         from '@/components/ui/Modal'
 import { Button }        from '@/components/ui/Button'
 import { Badge }         from '@/components/ui/Badge'
@@ -105,41 +106,39 @@ export default function PurchaseOrders() {
       }]}
       loading={isLoading}
     >
-      <div className="p-4 sm:p-6">
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="sm:hidden">
-            <ResponsiveTable<PurchaseOrder>
-              columns={[
-                { key: 'reference',   label: 'Reference' },
-                { key: 'vendor_name', label: 'Vendor' },
-              ]}
-              data={data ?? []}
-              rowKey="id"
-              loading={isLoading}
-              buildRowActions={(r) => [{ key: 'edit', label: 'Edit', onClick: () => openEdit(r) }]}
-              onRowClick={openEdit}
-              mobileStatusRender={(r) => (
-                <Badge color={STATUS_COLOR[r.status] ?? 'gray'} size="xs">
-                  {r.status.charAt(0).toUpperCase() + r.status.slice(1)}
-                </Badge>
-              )}
-              emptyTitle="No purchase orders yet"
-              emptyText="Create your first purchase order."
-            />
-          </div>
-          <div className="hidden sm:block">
-            <AdvancedTable<PurchaseOrder>
-              columns={COLUMNS}
-              data={data ?? []}
-              rowKey="id"
-              rowActions={rowActions}
-              searchPlaceholder="Search purchase orders..."
-              exportFilename="purchase-orders"
-              emptyText="No purchase orders found"
-            />
-          </div>
-        </div>
-      </div>
+      <TableCard
+        mobile={
+          <ResponsiveTable<PurchaseOrder>
+            columns={[
+              { key: 'reference',   label: 'Reference' },
+              { key: 'vendor_name', label: 'Vendor' },
+            ]}
+            data={data ?? []}
+            rowKey="id"
+            loading={isLoading}
+            buildRowActions={(r) => [{ key: 'edit', label: 'Edit', onClick: () => openEdit(r) }]}
+            onRowClick={openEdit}
+            mobileStatusRender={(r) => (
+              <Badge color={STATUS_COLOR[r.status] ?? 'gray'} size="xs">
+                {r.status.charAt(0).toUpperCase() + r.status.slice(1)}
+              </Badge>
+            )}
+            emptyTitle="No purchase orders yet"
+            emptyText="Create your first purchase order."
+          />
+        }
+        desktop={
+          <AdvancedTable<PurchaseOrder>
+            columns={COLUMNS}
+            data={data ?? []}
+            rowKey="id"
+            rowActions={rowActions}
+            searchPlaceholder="Search purchase orders..."
+            exportFilename="purchase-orders"
+            emptyText="No purchase orders found"
+          />
+        }
+      />
 
       <Modal
         open={open}
