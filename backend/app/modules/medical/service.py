@@ -6,7 +6,7 @@ from app.modules.medical.schemas import (
     PatientCreate, PatientUpdate,
     AppointmentCreate, AppointmentUpdate,
     MedicalRecordCreate, PrescriptionCreate,
-    PharmacyItemCreate,
+    PharmacyItemCreate, PharmacyItemUpdate,
 )
 
 
@@ -114,6 +114,18 @@ async def create_pharmacy_item(db: AsyncSession, data: PharmacyItemCreate) -> Ph
 async def list_pharmacy_items(db: AsyncSession, skip: int = 0, limit: int = 100) -> list[PharmacyItem]:
     result = await db.execute(select(PharmacyItem).offset(skip).limit(limit))
     return result.scalars().all()
+
+
+async def update_pharmacy_item(db: AsyncSession, item_id: int, data: PharmacyItemUpdate) -> PharmacyItem:
+    result = await db.execute(select(PharmacyItem).where(PharmacyItem.id == item_id))
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Pharmacy item not found")
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(item, field, value)
+    await db.flush()
+    await db.refresh(item)
+    return item
 
 
 async def low_stock_pharmacy(db: AsyncSession) -> list[PharmacyItem]:

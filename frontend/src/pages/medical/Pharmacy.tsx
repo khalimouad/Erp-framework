@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, AlertTriangle } from 'lucide-react'
 import { PageTemplate }  from '@/components/layout/PageTemplate'
 import { AdvancedTable } from '@/components/table/AdvancedTable'
+import { TableCard }     from '@/components/views/TableCard'
 import { Modal }         from '@/components/ui/Modal'
 import { Button }        from '@/components/ui/Button'
 import { FormView }      from '@/components/form/FormView'
@@ -109,8 +110,8 @@ export default function Pharmacy() {
           </div>
         )}
 
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="sm:hidden">
+        <TableCard
+          mobile={
             <ResponsiveTable<PharmacyItem>
               columns={[
                 {
@@ -141,8 +142,8 @@ export default function Pharmacy() {
               emptyTitle="No drugs yet"
               emptyText="Add your first pharmacy item."
             />
-          </div>
-          <div className="hidden sm:block">
+          }
+          desktop={
             <AdvancedTable<PharmacyItem>
               columns={COLUMNS}
               data={data ?? []}
@@ -152,8 +153,8 @@ export default function Pharmacy() {
               exportFilename="pharmacy"
               emptyText="No pharmacy items found"
             />
-          </div>
-        </div>
+          }
+        />
       </div>
 
       <Modal

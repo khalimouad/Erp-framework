@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { PageTemplate }  from '@/components/layout/PageTemplate'
@@ -9,6 +9,7 @@ import { Button }        from '@/components/ui/Button'
 import { Badge }         from '@/components/ui/Badge'
 import { FormView }      from '@/components/form/FormView'
 import { LinesTable }    from '@/components/form/LinesTable'
+import { useEditForm }   from '@/hooks/useEditForm'
 import { salesApi }       from '@/api/client'
 import { ResponsiveTable } from '@/components/views/ResponsiveTable'
 import type { SaleOrder }  from '@/types'
@@ -50,10 +51,12 @@ type OrderLine = { description: string; quantity: number; unit_price: number; su
 
 export default function SalesOrders() {
   const qc = useQueryClient()
-  const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState<SaleOrder | null>(null)
-  const [formData, setFormData] = useState<Record<string, unknown>>({})
+  const { open, editing, formData, setFormData, openNew, openEdit, close } = useEditForm<SaleOrder>()
   const [lines, setLines] = useState<OrderLine[]>([])
+
+  useEffect(() => {
+    setLines((editing as (SaleOrder & { lines?: OrderLine[] }) | null)?.lines ?? [])
+  }, [editing])
 
   const { data, isLoading } = useQuery<SaleOrder[]>({
     queryKey: ['sale-orders'],
@@ -65,17 +68,9 @@ export default function SalesOrders() {
       editing ? salesApi.updateOrder(editing.id, d) : salesApi.createOrder(d),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sale-orders'] })
-      setOpen(false)
-      setEditing(null)
+      close()
     },
   })
-
-  const openEdit = (r: SaleOrder) => {
-    setEditing(r)
-    setFormData({ ...r })
-    setLines((r as SaleOrder & { lines?: OrderLine[] }).lines ?? [])
-    setOpen(true)
-  }
 
   const rowActions: RowAction<SaleOrder>[] = [
     { key: 'edit', label: 'Edit', onClick: openEdit },
@@ -86,13 +81,6 @@ export default function SalesOrders() {
     subtotal: (l.quantity ?? 0) * (l.unit_price ?? 0),
   }))
 
-  const openNew = () => {
-    setEditing(null)
-    setFormData({})
-    setLines([])
-    setOpen(true)
-  }
-
   return (
     <PageTemplate
       title="Sales Orders"
@@ -102,7 +90,7 @@ export default function SalesOrders() {
         label: 'New Order',
         icon: <Plus size={14} />,
         variant: 'primary',
-        onClick: openNew,
+        onClick: () => openNew(),
       }]}
       loading={isLoading}
     >
@@ -142,12 +130,12 @@ export default function SalesOrders() {
 
       <Modal
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={close}
         title={editing ? `Edit — ${editing.reference}` : 'New Order'}
         size="lg"
         footer={
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button variant="ghost" onClick={close}>Cancel</Button>
             <Button
               variant="primary"
               loading={saveMutation.isPending}

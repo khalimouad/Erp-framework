@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { PageTemplate }  from '@/components/layout/PageTemplate'
@@ -9,6 +9,7 @@ import { Button }        from '@/components/ui/Button'
 import { Badge }         from '@/components/ui/Badge'
 import { FormView }      from '@/components/form/FormView'
 import { LinesTable }    from '@/components/form/LinesTable'
+import { useEditForm }   from '@/hooks/useEditForm'
 import { purchasingApi }  from '@/api/client'
 import { ResponsiveTable } from '@/components/views/ResponsiveTable'
 import type { PurchaseOrder } from '@/types'
@@ -50,10 +51,12 @@ type OrderLine = { description: string; quantity: number; unit_price: number; su
 
 export default function PurchaseOrders() {
   const qc = useQueryClient()
-  const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState<PurchaseOrder | null>(null)
-  const [formData, setFormData] = useState<Record<string, unknown>>({})
+  const { open, editing, formData, setFormData, openNew, openEdit, close } = useEditForm<PurchaseOrder>()
   const [lines, setLines] = useState<OrderLine[]>([])
+
+  useEffect(() => {
+    setLines((editing as (PurchaseOrder & { lines?: OrderLine[] }) | null)?.lines ?? [])
+  }, [editing])
 
   const { data, isLoading } = useQuery<PurchaseOrder[]>({
     queryKey: ['purchase-orders'],
@@ -65,17 +68,9 @@ export default function PurchaseOrders() {
       editing ? purchasingApi.updateOrder(editing.id, d) : purchasingApi.createOrder(d),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['purchase-orders'] })
-      setOpen(false)
-      setEditing(null)
+      close()
     },
   })
-
-  const openEdit = (r: PurchaseOrder) => {
-    setEditing(r)
-    setFormData({ ...r })
-    setLines((r as PurchaseOrder & { lines?: OrderLine[] }).lines ?? [])
-    setOpen(true)
-  }
 
   const rowActions: RowAction<PurchaseOrder>[] = [
     { key: 'edit', label: 'Edit', onClick: openEdit },
@@ -86,13 +81,6 @@ export default function PurchaseOrders() {
     subtotal: (l.quantity ?? 0) * (l.unit_price ?? 0),
   }))
 
-  const openNew = () => {
-    setEditing(null)
-    setFormData({})
-    setLines([])
-    setOpen(true)
-  }
-
   return (
     <PageTemplate
       title="Purchase Orders"
@@ -102,7 +90,7 @@ export default function PurchaseOrders() {
         label: 'New PO',
         icon: <Plus size={14} />,
         variant: 'primary',
-        onClick: openNew,
+        onClick: () => openNew(),
       }]}
       loading={isLoading}
     >
@@ -142,12 +130,12 @@ export default function PurchaseOrders() {
 
       <Modal
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={close}
         title={editing ? `Edit — ${editing.reference}` : 'New Purchase Order'}
         size="lg"
         footer={
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button variant="ghost" onClick={close}>Cancel</Button>
             <Button
               variant="primary"
               loading={saveMutation.isPending}

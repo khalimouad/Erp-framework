@@ -148,6 +148,19 @@ class PharmacyItemCreate(BaseModel):
     expiry_date: Optional[date] = None
 
 
+class PharmacyItemUpdate(BaseModel):
+    drug_name: Optional[str] = None
+    generic_name: Optional[str] = None
+    dosage_form: Optional[str] = None
+    strength: Optional[str] = None
+    quantity_on_hand: Optional[float] = None
+    reorder_level: Optional[float] = None
+    unit_cost: Optional[float] = None
+    unit_price: Optional[float] = None
+    expiry_date: Optional[date] = None
+    is_active: Optional[bool] = None
+
+
 class PharmacyItemOut(BaseModel):
     id: int
     drug_name: str

@@ -123,6 +123,16 @@ async def list_pharmacy(
     return await service.list_pharmacy_items(db, skip, limit)
 
 
+@router.patch("/pharmacy/{item_id}", response_model=schemas.PharmacyItemOut)
+async def update_pharmacy_item(
+    item_id: int,
+    data: schemas.PharmacyItemUpdate,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    return await service.update_pharmacy_item(db, item_id, data)
+
+
 @router.get("/pharmacy/low-stock", response_model=list[schemas.PharmacyItemOut])
 async def low_stock(db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
     return await service.low_stock_pharmacy(db)
